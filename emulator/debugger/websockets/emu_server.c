@@ -16,7 +16,7 @@
   along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <string>
+#include <string.h>
 #include "emu_server.h"
 
 #define TXIFG 0x02
@@ -336,8 +336,14 @@ int callback_emu (struct lws *wsi, enum lws_callback_reasons reason, void *user,
                     puts("met bytes");
                     fclose(fp);
                    // system("msp430-objcopy -O binary tmp.elf tmp.bin");
-                    std::string ObjCopyLine = "objcopy -I elf32-little -O binary \"" + std::string(UploadFileName) + "\" tmp.bin";
-                    system(ObjCopyLine.c_str());
+                    char cmdline[255] = "objcopy -I elf32-little -O binary \"";
+                    strcat(cmdline, UploadFileName);
+                    strcat(cmdline, "\" tmp.bin");
+                    system(cmdline);
+
+//                    std::string ObjCopyLine = "objcopy -I elf32-little -O binary \"" + std::string(UploadFileName) + "\" tmp.bin";
+//                    system(ObjCopyLine.c_str());
+
 
                     deb->web_firmware_uploaded = true;
                     upload_in_progress = false;
@@ -393,8 +399,13 @@ int callback_emu (struct lws *wsi, enum lws_callback_reasons reason, void *user,
 	                    fclose(fp);
 
 	                    //system("msp430-objcopy -O binary tmp.elf tmp.bin");
-                        std::string ObjCopyLine = "objcopy -I elf32-little -O binary \"" + std::string(UploadFileName) + "\" tmp.bin";
-                        system(ObjCopyLine.c_str());
+//                        std::string ObjCopyLine = "objcopy -I elf32-little -O binary \"" + std::string(UploadFileName) + "\" tmp.bin";
+//                        system(ObjCopyLine.c_str());
+
+                        char cmdline[255] = "objcopy -I elf32-little -O binary \"";
+                        strcat(cmdline, UploadFileName);
+                        strcat(cmdline, "\" tmp.bin");
+                        system(cmdline);
 
 	                    deb->web_firmware_uploaded = true;
 	                    upload_in_progress = false;

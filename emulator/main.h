@@ -59,6 +59,8 @@ typedef struct Packet Packet;
 #include "debugger/register_display.h"
 #include "debugger/disassembler.h"
 
+int run(unsigned int port);
+
 struct Emulator
 {
     Cpu *cpu;

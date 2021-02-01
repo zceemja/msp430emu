@@ -1,18 +1,9 @@
-import sys
-# from http.server import BaseHTTPRequestHandler, HTTPServer
-# from subprocess import PIPE, Popen
-from subprocess import Popen, PIPE
 from threading import Thread
-from time import sleep
-import websocket
-from os import path, mkdir, chdir
-
+from os import path
 import _msp430emu
 import wx
 
 source_dir = path.dirname(path.realpath(__file__))
-mkdir(".emulator")
-chdir(".emulator")
 
 
 class Emulator:
@@ -37,101 +28,134 @@ class Emulator:
     P1_7_ON_PACKET = 0x0E
     P1_7_OFF_PACKET = 0x0F
 
-    def __init__(self, ws_port=59981, load=None, callback=None):
+    def __init__(self, load=None, callback=None):
         # self.process = Popen([path.join(emu_dir, 'MSP430'), str(ws_port)], stdout=PIPE, stderr=PIPE)
-        self.ws_port = ws_port
-        self.process = Thread(target=self._start_emu, daemon=True)
-        self.process.start()
-        self._start_ws()
+        # self.ws_port = ws_port
+        # self._start_ws()
         self.load = load
         self.started = False
-        self.start_errors = 0
         self.callback = callback
+
+        _msp430emu.on_serial(self._on_serial)
+        _msp430emu.on_console(self._on_console)
+        _msp430emu.on_control(self._on_control)
+
+        if self.load is not None:
+            self.process = Thread(target=self._start_emu, daemon=False)
+            self.process.start()
+
+    def _on_serial(self, s):
+        self._cb(self.EVENT_SERIAL, s)
+
+    def _on_console(self, s):
+        self._cb(self.EVENT_CONSOLE, s)
+
+    def _on_control(self, opcode, data):
+        if opcode <= 0x0F:
+            self._cb(self.EVENT_GPIO, opcode)
+
+    def send_command(self, cmd):
+        if self.started:
+            _msp430emu.cmd(cmd)
+
+    def reset(self):
+        if self.started:
+            _msp430emu.reset()
 
     def _start_emu(self):
         print("starting emulator...")
-        _msp430emu.run(self.ws_port)
+        self.started = True
+        _msp430emu.init(self.load)
         print("stopping emulator...")
 
-    def _start_ws(self):
-        self.ws = websocket.WebSocketApp(
-            f"ws://127.0.0.1:{self.ws_port}",
-            subprotocols={"emu-protocol"},
-            on_open=self._ws_open,
-            on_data=self._ws_msg,
-            on_error=self._ws_err,
-            on_close=self._ws_close
-        )
-        Thread(target=self.ws.run_forever).start()
-
+    # def _start_ws(self):
+    #     self.ws = websocket.WebSocketApp(
+    #         f"ws://127.0.0.1:{self.ws_port}",
+    #         subprotocols={"emu-protocol"},
+    #         on_open=self._ws_open,
+    #         on_data=self._ws_msg,
+    #         on_error=self._ws_err,
+    #         on_close=self._ws_close
+    #     )
+    #     Thread(target=self.ws.run_forever).start()
+    #
     def load_file(self, fname):
         print("loading " + fname)
-        with open(fname, 'rb') as f:
-            fdata = f.read()
-            name = path.basename(fname)
-            payload = b'\x00'  # opcode
-            payload += len(fdata).to_bytes(2, byteorder='big')
-            payload += len(name).to_bytes(2, byteorder='big')
-            payload += name.encode() + fdata
-            self.ws.send(payload, websocket.ABNF.OPCODE_BINARY)
+        self.load = fname
+        self.process = Thread(target=self._start_emu, daemon=False)
+        self.process.start()
+    #     with open(self.load, 'rb') as f:
+    #         self.firmware = fname
+    #         fdata = f.read()
+    #         name = path.basename(fname)
+    #         payload = b'\x00'  # opcode
+    #         payload += len(fdata).to_bytes(2, byteorder='big')
+    #         payload += len(name).to_bytes(2, byteorder='big')
+    #         payload += name.encode() + fdata
+    #         self.ws.send(payload, websocket.ABNF.OPCODE_BINARY)
 
     def _cb(self, ev, data):
         if callable(self.callback):
             self.callback(ev, data)
 
-    def _ws_open(self):
-        print("connection established...")
-        self.started = True
-        if self.load is not None:
-            self.load_file(self.load)
+    # def _ws_open(self):
+    #     self.started = True
+    #     if self.load is not None:
+    #         self.load_file(self.load)
+    #
+    # def _ws_msg(self, data, frame, x):
+    #     opcode = data[0]
+    #     if opcode == 0:
+    #         if len(data) == 2 and data[1] <= 15:
+    #             self._cb(self.EVENT_GPIO, data[1])
+    #
+    #     elif opcode == 1:
+    #         message = data[1:-1].decode()
+    #         self._cb(self.EVENT_CONSOLE, message)
+    #         # print(message, end=None)
+    #         return
+    #     elif opcode == 2:
+    #         message = data[1:-1].decode()
+    #         self._cb(self.EVENT_SERIAL, message)
+    #         return
+    #     else:
+    #         pass
 
-    def _ws_msg(self, data, frame, x):
-        opcode = data[0]
-        if opcode == 0:
-            if len(data) == 2 and data[1] <= 15:
-                self._cb(self.EVENT_GPIO, data[1])
-
-        elif opcode == 1:
-            message = data[1:-1].decode()
-            self._cb(self.EVENT_CONSOLE, message)
-            # print(message, end=None)
-            return
-        elif opcode == 2:
-            message = data[1:-1].decode()
-            self._cb(self.EVENT_SERIAL, message)
-            return
-        else:
-            pass
-
-    def _ws_err(self, err):
-        if not self.started:
-            self.start_errors += 1
-            if self.start_errors < 5:
-                print(f"Failed to connect to emulator backend attempt {self.start_errors}")
-                sleep(1)
-                self._start_ws()
-            raise ConnectionError("Failed to connect to emulation backend after 5 tries")
-        raise err
-
-    def _ws_close(self):
-        if not self.started:
-            return
-        pass
+    # def _ws_err(self, err):
+    #     if not self.started:
+    #         self.start_errors += 1
+    #         if self.start_errors < 5:
+    #             print(f"Failed to connect to emulator backend attempt {self.start_errors}")
+    #             sleep(1)
+    #             self._start_ws()
+    #         raise ConnectionError("Failed to connect to emulation backend after 5 tries")
+    #     raise err
+    #
+    # def _ws_close(self):
+    #     if not self.started:
+    #         return
+    #     pass
 
     def __del__(self):
         self.close()
 
     def emulation_pause(self):
-        self.ws.send(b'\x02', websocket.ABNF.OPCODE_BINARY)
+        if self.started:
+            _msp430emu.pause()
+        # if self.load is not None:
+        #     self.ws.send(b'\x02', websocket.ABNF.OPCODE_BINARY)
 
     def emulation_start(self):
-        self.ws.send(b'\x01', websocket.ABNF.OPCODE_BINARY)
+        if self.started:
+            _msp430emu.play()
+        # if self.load is not None:
+        #     self.ws.send(b'\x01', websocket.ABNF.OPCODE_BINARY)
 
     def close(self):
-        print("connection ended...")
-        self.ws.close()
+        if self.started:
+            _msp430emu.stop()
         # _msp430emu.stop()
-        # self.process.join(1)
+            self.process.join(5)
 
 
 class EmulatorWindow(wx.Frame):
@@ -165,9 +189,9 @@ class EmulatorWindow(wx.Frame):
         self.SetMenuBar(menuBar)
 
         self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
-        btn_start_emu = wx.Button(self, -1, "S&tart")
+        btn_start_emu = wx.Button(self, -1, "Start")
         self.Bind(wx.EVT_BUTTON, self.OnStart, btn_start_emu)
-        btn_stop_emu = wx.Button(self, -1, "P&ause")
+        btn_stop_emu = wx.Button(self, -1, "Pause")
         self.Bind(wx.EVT_BUTTON, self.OnPause, btn_stop_emu)
         self.sizer2.Add(btn_start_emu, 1, wx.EXPAND)
         self.sizer2.Add(btn_stop_emu, 1, wx.EXPAND)
@@ -193,8 +217,23 @@ class EmulatorWindow(wx.Frame):
         # dc.SetBrush(wx.WHITE_BRUSH)
         # dc.DrawRectangle(50, 50, 500, 500)
 
+        self.sizer_key_rst = wx.BoxSizer(wx.HORIZONTAL)
+        btn_key = wx.Button(self, -1, "Press Key")
+        self.Bind(wx.EVT_BUTTON, self.OnKeyPress, btn_key)
+        btn_rst = wx.Button(self, -1, "Reset")
+        self.Bind(wx.EVT_BUTTON, self.OnKeyReset, btn_rst)
+        self.sizer_key_rst.Add(btn_key, 1, wx.EXPAND)
+        self.sizer_key_rst.Add(btn_rst, 1, wx.EXPAND)
+
+        self.sizer_diagram = wx.BoxSizer(wx.VERTICAL)
+        self.sizer_diagram.Add(panel, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        #
+        self.sizer_left = wx.BoxSizer(wx.VERTICAL)
+        self.sizer_left.Add(self.sizer_diagram, 1, wx.EXPAND)
+        self.sizer_left.Add(self.sizer_key_rst, 0, wx.ALIGN_BOTTOM)
+
         self.sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer1.Add(panel, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        self.sizer1.Add(self.sizer_left, 0, wx.EXPAND)
         self.sizer1.Add(self.control, 1, wx.EXPAND)
         self.sizer1.Add(self.sizer0, 1, wx.EXPAND)
 
@@ -220,10 +259,10 @@ class EmulatorWindow(wx.Frame):
             wx.CallAfter(self.diagram.Refresh)
 
     def RestartEmulator(self, e):
-        self.control.AppendText("Stopping Emulator..")
         self.emu.close()
         self.control.Clear()
         self.serial.Clear()
+        self.emu = Emulator(load=self.load, callback=self.callback)
 
     def ToggleConsole(self, e):
         if e.Int == 0:
@@ -234,7 +273,7 @@ class EmulatorWindow(wx.Frame):
             self.Layout()
 
     def OnOpen(self, e):
-        with wx.FileDialog(self, "Open Firmware File", wildcard="ELF files (*.elf)|*.elf",
+        with wx.FileDialog(self, "Open Firmware File", wildcard="BIN files (*.bin)|*.bin",
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
             if fileDialog.ShowModal() == wx.ID_CANCEL:
                 return
@@ -256,6 +295,12 @@ class EmulatorWindow(wx.Frame):
     def OnExit(self, e):
         self.emu.close()
         self.Close(True)
+
+    def OnKeyPress(self, e):
+        pass
+
+    def OnKeyReset(self, e):
+        self.emu.reset()
 
 
 class DrawRect(wx.Panel):

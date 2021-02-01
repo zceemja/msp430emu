@@ -2,7 +2,6 @@
 from distutils.core import setup, Extension
 
 emulator_files = [
-    'emulator/main.c',
     'emulator/devices/utilities.c',
     'emulator/devices/cpu/registers.c',
     'emulator/devices/memory/memspace.c',
@@ -17,20 +16,22 @@ emulator_files = [
     'emulator/devices/peripherals/timer_a.c',
     'emulator/devices/peripherals/usci.c',
     'emulator/devices/peripherals/port1.c',
-    'emulator/debugger/websockets/emu_server.c',
-    'emulator/debugger/websockets/packet_queue.c',
+    # 'emulator/debugger/websockets/emu_server.c',
+    # 'emulator/debugger/websockets/packet_queue.c',
     'emulator/debugger/disassembler.c',
+    'emulator/python/py_functions.c',
+    'emulator/python/py_interface.c',
 ]
 libraries = [
-    'websockets',
+    # 'websockets',
     'readline',
     'rt',
-    'ssl',
-    'crypto',
-    'pthread'
+    'pthread',
+    # 'ssl',
+    # 'crypto',
 ]
 ext_mod = Extension(
-    '_msp430emu', emulator_files, libraries=libraries, extra_compile_args=["-w"]
+    '_msp430emu', emulator_files, libraries=libraries, extra_compile_args=["-w", "-DPYTHON"]
 )
 
 setup(name='msp430emu',

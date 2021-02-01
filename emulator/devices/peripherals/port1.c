@@ -44,19 +44,15 @@ void handle_port_1 (Emulator *emu)
     //////////////////// P1.0 ////////////////////////
 
     // Check Direction
-    if (*p->DIR & 0x01)
-    {
-        p->DIR_0 = true;         // Set P1DIR.0 flag
-
-        if (*p->OUT & 0x01)      // Check OUTPUT
+    if (*p->DIR & 0x01) {
+        p->DIR_0 = true;           // Set P1DIR.0 flag
+        if (*p->OUT & 0x01)        // Check OUTPUT
             p->OUT_0 = true;       // Set P1OUT.0 flag
         else
             p->OUT_0 = false;      // Reset P1OUT.0 flag
     }
-
     // Check INPUT 
-    else                 
-    {                                
+    else {
         p->DIR_0 = false;
     }
     

@@ -128,11 +128,11 @@ void handle_usci (Emulator *emu)
 
       if (c & 0xFF) {
 	if (deb->web_interface) {
-	  print_serial(emu, (char*)&str[0]);
-	  //write(sp, usci->UCA0TXBUF, 1);
+        print_serial(emu, (char*)&str[0]);
+        //write(sp, usci->UCA0TXBUF, 1);
 	}
 	else if (deb->console_interface) {
-	  //write(sp, usci->UCA0TXBUF, 1);
+        //write(sp, usci->UCA0TXBUF, 1);
 	}
 
 	*usci->UCA0TXBUF = 0;

@@ -19,7 +19,7 @@
 #ifndef _DEBUGGER_H_
 #define _DEBUGGER_H_
 
-#include "../main.h"
+#include "../emulator.h"
 #include "../devices/cpu/registers.h"
 #include "../devices/memory/memspace.h"
 

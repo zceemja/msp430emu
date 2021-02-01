@@ -458,7 +458,7 @@ int callback_emu (struct lws *wsi, enum lws_callback_reasons reason, void *user,
 	     return 0;
 	 }
 
-                 case 0x04: { // Console Input Data
+     case 0x04: { // Console Input Data
 	     if (len > 1000) exit(1);
 
 	     buf = buf + 1;	     

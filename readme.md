@@ -1,12 +1,16 @@
 # MSP430 Emulator with GUI
 
+A python wrapper for MSP430 emulator. Emulator itself has been taken from 
+[https://github.com/RudolfGeosits/MSP430-Emulator](https://github.com/RudolfGeosits/MSP430-Emulator)
+
+It has been modified to work without websocket or any other 3rd party libraries, enabling it to be easily compiled on any platform.
 ## Setup
 
 More detailed description for multiple platforms will be added.
 
 Install latest via pip:
 ```bash
-pip install https://gogs.infcof.com/UCL/msp430emu/archive/master.zip
+pip install https://github.com/zceemja/msp430emu/archive/master.zip
 ```
 
 ## Work Done

@@ -263,6 +263,8 @@ class EmulatorWindow(wx.Frame):
             self.btn_key.Disable()
             self.btn_start_emu.Disable()
             self.btn_stop_emu.Disable()
+        else:
+            self.statusBar.SetStatusText("Press start to run emulation")
 
     def callback(self, event, data):
         if event == Emulator.EVENT_CONSOLE:

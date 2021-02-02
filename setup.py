@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from setuptools.dist import Distribution
 from distutils.core import setup, Extension
 
@@ -43,4 +42,7 @@ setup(name='msp430emu',
           '_msp430emu', emulator_files, extra_compile_args=["-w", "-DPYTHON"]
       )],
       distclass=BinaryDistribution,
+      install_requires=[
+          "wxPython >= 4",
+      ],
       )

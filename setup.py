@@ -1,5 +1,8 @@
 #!/usr/bin/env python
+
+from setuptools.dist import Distribution
 from distutils.core import setup, Extension
+
 
 emulator_files = [
     'emulator/devices/utilities.c',
@@ -16,31 +19,28 @@ emulator_files = [
     'emulator/devices/peripherals/timer_a.c',
     'emulator/devices/peripherals/usci.c',
     'emulator/devices/peripherals/port1.c',
-    # 'emulator/debugger/websockets/emu_server.c',
-    # 'emulator/debugger/websockets/packet_queue.c',
     'emulator/debugger/disassembler.c',
     'emulator/python/py_functions.c',
     'emulator/python/py_interface.c',
     'emulator/win.c',
 ]
-libraries = [
-    # 'websockets',
-    # 'readline',
-    # 'rt',
-    # 'pthread',
-    # 'ssl',
-    # 'crypto',
-]
-ext_mod = Extension(
-    '_msp430emu', emulator_files, libraries=libraries, extra_compile_args=["-w", "-DPYTHON"]
-)
+
+
+class BinaryDistribution(Distribution):
+    def is_pure(self):
+        return False
+
 
 setup(name='msp430emu',
-      version='1.0',
+      version='0.1',
       description='MSP 430 Emulator',
       author_email='zceemja@ucl.ac.uk',
       packages=['msp430emu'],
       package_dir={'msp430emu': 'msp430emu'},
       package_data={'msp430emu': ['*.png']},
-      ext_modules=[ext_mod],
+      include_package_data=True,
+      ext_modules=[Extension(
+          '_msp430emu', emulator_files, extra_compile_args=["-w", "-DPYTHON"]
+      )],
+      distclass=BinaryDistribution,
       )

@@ -154,8 +154,7 @@ class Emulator:
     def close(self):
         if self.started:
             _msp430emu.stop()
-        # _msp430emu.stop()
-            self.process.join(5)
+            self.process.join(2)
 
 
 class EmulatorWindow(wx.Frame):
@@ -166,9 +165,9 @@ class EmulatorWindow(wx.Frame):
         self.control.Hide()
 
         self.serial = wx.TextCtrl(self, size=wx.Size(400, 450), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP)
-        self.serial_input = wx.TextCtrl(self, style=wx.TE_DONTWRAP)
+        self.serial_input = wx.TextCtrl(self)
 
-        self.CreateStatusBar()  # A Statusbar in the bottom of the window
+        self.statusBar = self.CreateStatusBar()  # A Statusbar in the bottom of the window
 
         file_menu = wx.Menu()
         menuFile = file_menu.Append(wx.ID_OPEN, "&Firmware", " Open firmware")
@@ -189,35 +188,36 @@ class EmulatorWindow(wx.Frame):
         self.SetMenuBar(menuBar)
 
         self.sizer2 = wx.BoxSizer(wx.HORIZONTAL)
-        btn_start_emu = wx.Button(self, -1, "Start")
-        self.Bind(wx.EVT_BUTTON, self.OnStart, btn_start_emu)
-        btn_stop_emu = wx.Button(self, -1, "Pause")
-        self.Bind(wx.EVT_BUTTON, self.OnPause, btn_stop_emu)
+        self.btn_start_emu = wx.Button(self, -1, "Start")
+        self.Bind(wx.EVT_BUTTON, self.OnStart, self.btn_start_emu)
+        self.btn_stop_emu = wx.Button(self, -1, "Pause")
+        self.Bind(wx.EVT_BUTTON, self.OnPause, self.btn_stop_emu)
 
-        btn_key = wx.Button(self, -1, "Press Key")
-        self.Bind(wx.EVT_BUTTON, self.OnKeyPress, btn_key)
-        btn_rst = wx.Button(self, -1, "Reset")
-        self.Bind(wx.EVT_BUTTON, self.OnKeyReset, btn_rst)
+        self.btn_key = wx.Button(self, -1, "Press Key")
+        self.Bind(wx.EVT_BUTTON, self.OnKeyPress, self.btn_key)
+        self.btn_rst = wx.Button(self, -1, "Reset")
+        self.Bind(wx.EVT_BUTTON, self.OnKeyReset, self.btn_rst)
 
-        self.sizer2.Add(btn_key, 1, wx.EXPAND)
-        self.sizer2.Add(btn_start_emu, 1, wx.EXPAND)
-        self.sizer2.Add(btn_stop_emu, 1, wx.EXPAND)
-        self.sizer2.Add(btn_rst, 1, wx.EXPAND)
+        self.sizer2.Add(self.btn_key, 1, wx.EXPAND)
+        self.sizer2.Add(self.btn_start_emu, 1, wx.EXPAND)
+        self.sizer2.Add(self.btn_stop_emu, 1, wx.EXPAND)
+        self.sizer2.Add(self.btn_rst, 1, wx.EXPAND)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
         self.sizer3 = wx.BoxSizer(wx.HORIZONTAL)
-        btn_start_emu = wx.Button(self, -1, "Send")
-        self.sizer3.Add(self.serial_input, 1, wx.EXPAND)
-        self.sizer3.Add(btn_start_emu, 0)
+        self.btn_start_emu = wx.Button(self, -1, "Send")
+        self.Bind(wx.EVT_BUTTON, self.SendSerial, self.btn_start_emu)
+        self.sizer3.Add(self.serial_input, 1)
+        self.sizer3.Add(self.btn_start_emu, 0)
 
         self.sizer0 = wx.BoxSizer(wx.VERTICAL)
         self.sizer0.Add(self.serial, 1, wx.EXPAND)
         self.sizer0.Add(self.sizer3, 0, wx.EXPAND)
 
         panel = wx.Panel(self, size=wx.Size(275, 375))
-        img = wx.Bitmap(path.join(source_dir, "msp430.png"), wx.BITMAP_TYPE_PNG)
-        wx.StaticBitmap(panel, -1, img, (0, 0), (img.GetWidth(), img.GetHeight()))
+        # img =
+        # wx.StaticBitmap(panel, -1, img, (0, 0), (img.GetWidth(), img.GetHeight()))
         self.diagram = DrawRect(panel, -1, size=wx.Size(275, 375))
         #
         # dc = wx.WindowDC(panel)
@@ -256,6 +256,13 @@ class EmulatorWindow(wx.Frame):
         self.control.WriteText("Initialising Emulator..\n")
         self.load = load
         self.emu = Emulator(load=self.load, callback=self.callback)
+        if self.load is None:
+            self.serial_input.Disable()
+            self.serial.Disable()
+            self.btn_rst.Disable()
+            self.btn_key.Disable()
+            self.btn_start_emu.Disable()
+            self.btn_stop_emu.Disable()
 
     def callback(self, event, data):
         if event == Emulator.EVENT_CONSOLE:
@@ -288,7 +295,14 @@ class EmulatorWindow(wx.Frame):
             self.load = fileDialog.GetPath()
             self.emu.load_file(self.load)
             self.diagram.power = False
-            # self.RestartEmulator(None)
+
+            self.serial_input.Enable()
+            self.serial.Enable()
+            self.btn_rst.Enable()
+            self.btn_key.Enable()
+            self.btn_start_emu.Enable()
+            self.btn_stop_emu.Enable()
+            self.statusBar.SetStatusText("Press start to run emulation")
 
     def OnPause(self, e):
         self.emu.emulation_pause()
@@ -296,9 +310,13 @@ class EmulatorWindow(wx.Frame):
         self.diagram.Refresh()
 
     def OnStart(self, e):
-        self.emu.emulation_start()
-        self.diagram.power = True
-        self.diagram.Refresh()
+        if self.load is None:
+            self.OnOpen(e)
+        else:
+            self.statusBar.SetStatusText("")
+            self.emu.emulation_start()
+            self.diagram.power = True
+            self.diagram.Refresh()
 
     def OnExit(self, e):
         self.emu.close()
@@ -308,7 +326,13 @@ class EmulatorWindow(wx.Frame):
         pass
 
     def OnKeyReset(self, e):
+        self.diagram.port1 = [False, False, False, False, False, False, False, False]
         self.emu.reset()
+
+    def SendSerial(self, e):
+        text = self.serial_input.GetValue()
+        print(text)
+        self.serial_input.Clear()
 
 
 class DrawRect(wx.Panel):
@@ -323,11 +347,13 @@ class DrawRect(wx.Panel):
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.power = False
         self.port1 = [False, False, False, False, False, False, False, False]
+        self.image = wx.Bitmap(path.join(source_dir, "msp430.png"), wx.BITMAP_TYPE_PNG)
 
     def OnPaint(self, evt):
         """set up the device context (DC) for painting"""
         self.dc = wx.PaintDC(self)
 
+        self.dc.DrawBitmap(self.image, 0, 0, True)
         if self.power:
             self.dc.SetPen(wx.Pen(self.GREEN, style=wx.TRANSPARENT))
             self.dc.SetBrush(wx.Brush(self.GREEN, wx.SOLID))

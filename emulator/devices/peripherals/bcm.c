@@ -31,7 +31,7 @@ uint64_t getnano() {
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
     double x = (double)now.QuadPart / (double)frequency.QuadPart;
-    return (uint64_t)(x * 1.0e9);
+    return (uint64_t)(x * 1000000000.0);
 #else
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);

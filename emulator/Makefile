@@ -18,7 +18,7 @@ _msp430emu.so: py_functions.o py_interface.o utilities.o registers.o memspace.o 
 	usci.o port1.o bcm.o timer_a.o
 	$(CC) $(LLFLAGS) py_functions.o py_interface.o utilities.o registers.o memspace.o debugger.o disassembler.o \
 	register_display.o decoder.o flag_handler.o formatI.o formatII.o formatIII.o usci.o port1.o bcm.o timer_a.o \
-	-lreadline -lrt -lpthread -o _msp430emu.so -shared
+	-o _msp430emu.so -shared
 
 
 main.o : main.c

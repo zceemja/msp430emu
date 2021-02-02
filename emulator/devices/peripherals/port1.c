@@ -40,16 +40,28 @@ void handle_port_1 (Emulator *emu)
 {
     Cpu *cpu = emu->cpu;
     Port_1 *p = cpu->p1;
+    uint8_t flag = 0;
 
     //////////////////// P1.0 ////////////////////////
 
     // Check Direction
     if (*p->_DIR & 0x01) {
         p->DIR_0 = true;           // Set P1DIR.0 flag
-        if (*p->_OUT & 0x01)        // Check OUTPUT
-            p->OUT_0 = true;       // Set P1OUT.0 flag
-        else
-            p->OUT_0 = false;      // Reset P1OUT.0 flag
+
+        if(*p->_OUT & 0x01) {
+            if(p->OUT_0 == false) send_control(emu, P1_0_ON_PACKET, NULL, 0);
+            p->OUT_0 = true;  // Set P1OUT.0 flag
+        } else {
+            if(p->OUT_0 == true) send_control(emu, P1_0_OFF_PACKET, NULL, 0);
+            p->OUT_0 = false;// Reset P1OUT.0 flag
+        }
+
+
+
+//        if(((p->DIR_0 == false) && (*p->_DIR & 0x01)) || ((*p->_OUT & 0x01) != p->OUT_0)) {
+//            if (*p->_OUT & 0x01) send_control(emu, P1_0_ON_PACKET, NULL, 0);
+//            else send_control(emu, P1_0_OFF_PACKET, NULL, 0);
+//        }
     }
     // Check INPUT 
     else {
@@ -64,7 +76,7 @@ void handle_port_1 (Emulator *emu)
         // Check For Interrupt Pending 
         if (*p->_IFG & 0x01)
         {    
-            // Set p->IFG.0 flag indicating INT 
+            // Set p->IFG.0 flag indicating INT
             p->IFG_0 = true;
         }
         else
@@ -75,19 +87,22 @@ void handle_port_1 (Emulator *emu)
     else
     {
         p->IE_0 = false;
-    }    
+    }
+
+    if (*p->_REN & 0x01) p->REN_0 = true;
+    else p->REN_0 = false;
     
     // Check primary select
     if (*p->_SEL & 0x01) {
         if (p->SEL_0 == false) {
-            puts("P1_SEL_0 = 1");
+//            puts("P1_SEL_0 = 1");
         }
         
         p->SEL_0 = true;
     }
     else {
         if (p->SEL_0 == true) {
-            puts("P1_SEL_0 = 0");
+//            puts("P1_SEL_0 = 0");
         }
 
         p->SEL_0 = false;
@@ -96,18 +111,35 @@ void handle_port_1 (Emulator *emu)
     // Check secondary select
     if (*p->_SEL2 & 0x01) {
         if (p->SEL2_0 == false) {
-            puts("P1_SEL2_0 = 1");
+//            puts("P1_SEL2_0 = 1");
         }
-        
         p->SEL2_0 = true;
     }
     else {
         if (p->SEL2_0 == true) {
-            puts("P1_SEL2_0 = 0");
+//            puts("P1_SEL2_0 = 0");
         }
 
         p->SEL2_0 = false;        
     }
+
+//    if ((p->SEL2_0 == false) && (p->SEL_0 == false)) {
+//         // Output
+//         if(p->DIR_0 == false) {
+//            if(p->OUT_0 == true) flag = P1_0_ON_PACKET;
+//            else flag = P1_0_ON_PACKET;
+//         // Pull up/down enabled
+//         } else if(p->REN_0 == true) {
+//            if(p->OUT_0 == true) flag = P1_0_PULLU_PACKET;
+//            else flag = P1_0_PULLD_PACKET;
+//         } else {
+//            flag = P1_0_HIGHZ_PACKET;
+//         }
+//         if(flag != p->PIN0F) {
+//            p->PIN0F = flag;
+//            send_control(emu, flag, NULL, 0);
+//         }
+//    }
 
     //////////////////// P1.1 ////////////////////////
 
@@ -143,14 +175,14 @@ void handle_port_1 (Emulator *emu)
     // Check primary select
     if (*p->_SEL & 0x02) {
         if (p->SEL_1 == false) {
-            puts("P1_SEL_1 = 1");
+//            puts("P1_SEL_1 = 1");
         }
 
         p->SEL_1 = true;
     }
     else {
         if (p->SEL_1 == true) {
-            puts("P1_SEL_1 = 0");
+//            puts("P1_SEL_1 = 0");
         }
 
         p->SEL_1 = false;
@@ -160,13 +192,13 @@ void handle_port_1 (Emulator *emu)
     if (*p->_SEL2 & 0x02) {
         if (p->SEL2_1 == false) {
             p->SEL2_1 = true;
-            puts("P1_SEL2_1 = 1");
+//            puts("P1_SEL2_1 = 1");
         }
     }
     else {
         if (p->SEL2_1 == true) {
             p->SEL2_1 = false;        
-            puts("P1_SEL2_1 = 0");
+//            puts("P1_SEL2_1 = 0");
         }
     }
 
@@ -213,7 +245,7 @@ void handle_port_1 (Emulator *emu)
     {
         if (p->SEL_2 == false) 
         {
-            puts("P1_SEL_2 = 1");
+//            puts("P1_SEL_2 = 1");
         }
         
         p->SEL_2 = true;
@@ -222,7 +254,7 @@ void handle_port_1 (Emulator *emu)
     {
         if (p->SEL_2 == true)
         {
-            puts("P1_SEL_2 = 0");
+//            puts("P1_SEL_2 = 0");
         }
 
         p->SEL_2 = false;
@@ -231,14 +263,14 @@ void handle_port_1 (Emulator *emu)
     // Check secondary select
     if (*p->_SEL2 & 0x04) {
         if (p->SEL2_2 == false) {
-            puts("P1_SEL2_2 = 1");
+//            puts("P1_SEL2_2 = 1");
         }
         
         p->SEL2_2 = true;
     }
     else {
         if (p->SEL2_2 == true) {
-            puts("P1_SEL2_2 = 0");
+//            puts("P1_SEL2_2 = 0");
         }
 
         p->SEL2_2 = false;        
@@ -339,15 +371,14 @@ void handle_port_1 (Emulator *emu)
     // Handler P1.6 
     if (*p->_DIR & 0x40)
     {
+        if(*p->_OUT & 0x40) {
+            if(p->OUT_6 == false) send_control(emu, P1_6_ON_PACKET, NULL, 0);
+            p->OUT_6 = true;  // Set P1OUT.6 flag
+        } else {
+            if(p->OUT_6 == true) send_control(emu, P1_6_OFF_PACKET, NULL, 0);
+            p->OUT_6 = false;// Reset P1OUT.6 flag
+        }
         p->DIR_6 = true;
-        if (*p->_OUT & 0x40)
-        {
-            p->OUT_6 = true;
-        }
-        else
-        {
-            p->OUT_6 = false;
-        }
     }
     else
     {
@@ -452,6 +483,8 @@ void setup_port_1 (Emulator *emu)
     
     p->DIR_7 = false; p->OUT_7 = false; p->IFG_7 = false; 
     p->IE_7 = false; p->SEL_7 = false; p->SEL2_7 = false;
+
+    p->PIN0F = P1_0_OFF_PACKET;
 }
 
 /* POWER UP CLEAR (PUC)      

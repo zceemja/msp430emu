@@ -18,6 +18,28 @@
 
 #include "bcm.h"
 
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
+#include <time.h>
+#endif
+
+uint64_t getnano() {
+#ifdef _MSC_VER
+    static LARGE_INTEGER frequency;
+    if (frequency.QuadPart == 0) QueryPerformanceFrequency(&frequency);
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    double x = (double)now.QuadPart / (double)frequency.QuadPart;
+    return (uint64_t)(x * 1.0e9);
+#else
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return now.tv_sec * 1000000000 + now.tv_nsec;
+#endif
+}
+
+
 void handle_bcm (Emulator *emu) 
 {
   Cpu *cpu = emu->cpu;
@@ -163,27 +185,29 @@ void setup_bcm (Emulator *emu)
 }
 
 
-uint64_t nanosec_diff(struct timespec *timeA_p, struct timespec *timeB_p)
-{
-    return ((timeA_p->tv_sec * 1000000000) + timeA_p->tv_nsec) - ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
-}
+//uint64_t nanosec_diff(struct timespec *timeA_p, struct timespec *timeB_p)
+//{
+//    return ((timeA_p->tv_sec * 1000000000) + timeA_p->tv_nsec) - ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
+//}
 
 void mclk_wait_cycles (Emulator *emu, uint64_t cycles)
 {
     Cpu *cpu = emu->cpu;
     Bcm *bcm = cpu->bcm;  
 
-    struct timespec start, end;
+    uint64_t start, end;
     uint64_t i, elapsed_nsecs;
   
     for (i = 0;i < cycles;i++)
     {
-        clock_gettime(CLOCK_MONOTONIC, &start);
+        start = getnano();
+//        clock_gettime(CLOCK_MONOTONIC, &start);
 
         while (true)
         {
-            clock_gettime(CLOCK_MONOTONIC, &end);
-            elapsed_nsecs = nanosec_diff(&end, &start);
+//            clock_gettime(CLOCK_MONOTONIC, &end);
+            end = getnano();
+            elapsed_nsecs = end - start;//nanosec_diff(&end, &start);
 
             // Choose timing based on clock source
             if (bcm->mclk_source == DCOCLK)
@@ -206,15 +230,17 @@ void smclk_wait_cycles (Emulator *emu, uint64_t cycles)
   Cpu *cpu = emu->cpu;
   Bcm *bcm = cpu->bcm;  
   
-  struct timespec start, end;
+  uint64_t start, end;
   uint64_t i, elapsed_nsecs;
   
   for (i = 0;i < cycles;i++) {
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    start = getnano();
+    //    clock_gettime(CLOCK_MONOTONIC, &start);
 
     while (true) {
-      clock_gettime(CLOCK_MONOTONIC, &end);
-      elapsed_nsecs = nanosec_diff(&end, &start);
+      end = getnano();
+//      clock_gettime(CLOCK_MONOTONIC, &end);
+      elapsed_nsecs = end - start;//nanosec_diff(&end, &start);
 
       // Choose timing based on clock source
       if (bcm->mclk_source == DCOCLK) {

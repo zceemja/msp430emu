@@ -21,7 +21,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 
 #include "../cpu/registers.h"
 #include "../utilities.h"

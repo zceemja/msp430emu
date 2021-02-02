@@ -93,7 +93,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
     destination_addr = (uint16_t *)d_reg;         // Destination Register
 
     if (!disassemble) {
-      bw_flag == BYTE ? *d_reg &= 0x00FF : 0;
+      bw_flag == EMU_BYTE ? *d_reg &= 0x00FF : 0;
     }
   }
   
@@ -182,7 +182,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
     destination_addr = (uint16_t *)d_reg;          /* Destination register */
     
     if (!disassemble) {
-      bw_flag == BYTE ? *d_reg &= 0x00FF : 0;
+      bw_flag == EMU_BYTE ? *d_reg &= 0x00FF : 0;
     }
   }
 
@@ -272,7 +272,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
     destination_addr = (uint16_t*)d_reg;          /* Destination Register */
 
     if (!disassemble) {
-      bw_flag == BYTE ? *d_reg &= 0x00FF : 0;
+      bw_flag == EMU_BYTE ? *d_reg &= 0x00FF : 0;
     }
   }
 
@@ -330,11 +330,11 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
       sprintf(hex_str_part, "%04X", (uint16_t) source_value);
       strncat(hex_str, hex_str_part, sizeof hex_str);
 
-      if (bw_flag == WORD) {
+      if (bw_flag == EMU_WORD) {
 	sprintf(asm_operands, "#0x%04X, %s", 
 		(uint16_t) source_value, d_reg_name);
       }
-      else if (bw_flag == BYTE) {
+      else if (bw_flag == EMU_BYTE) {
 	sprintf(asm_operands, "#0x%04X, %s",
 		(uint8_t) source_value, d_reg_name);
       }
@@ -345,14 +345,14 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
       sprintf(asm_operands, "@%s+, %s", s_reg_name, d_reg_name);
       
       if (!disassemble) {
-	bw_flag == WORD ? *s_reg += 2 : (*s_reg += 1);
+	bw_flag == EMU_WORD ? *s_reg += 2 : (*s_reg += 1);
       }
     }
 
     destination_addr = (uint16_t*)d_reg;           /* Destination Register */
 
     if (!disassemble) {
-      bw_flag == BYTE ? *d_reg &= 0x00FF : 0;
+      bw_flag == EMU_BYTE ? *d_reg &= 0x00FF : 0;
     }
   }
 
@@ -384,7 +384,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
       sprintf(asm_operands, "@%s+, ", s_reg_name);	
 
       if (!disassemble) {
-	bw_flag == WORD ? *s_reg += 2 : (*s_reg += 1);
+	bw_flag == EMU_WORD ? *s_reg += 2 : (*s_reg += 1);
       }
     }
 
@@ -428,10 +428,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
        */
       case 0x4: {
 
-        if (bw_flag == WORD) {		
+        if (bw_flag == EMU_WORD) {
           *destination_addr = source_value;
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *((uint8_t *) destination_addr) = (uint8_t) source_value;
         }
         
@@ -456,10 +456,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
 
         uint16_t original_dst_value = *destination_addr;
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           *destination_addr += source_value;
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *((uint8_t *) destination_addr) += (uint8_t) source_value;
         }
 
@@ -489,10 +489,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
 
         uint16_t original_dst_value = *destination_addr;
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           *destination_addr += source_value + cpu->sr.carry;
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *((uint8_t *) destination_addr) += (uint8_t) source_value + cpu->sr.carry;
         }
         
@@ -524,10 +524,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
         int16_t original_dst_value = *destination_addr;
         source_value = ~source_value; /* 1's comp */
         
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           *(int16_t *)destination_addr += source_value + cpu->sr.carry; 
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *(int8_t *)destination_addr += (int8_t) source_value + cpu->sr.carry;
         }
 
@@ -559,10 +559,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
         int16_t original_dst_value = *destination_addr;
         source_value = ~source_value + 1;
  
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           *(uint16_t *)destination_addr += source_value; 
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *(uint8_t *)destination_addr += (uint8_t) source_value;
         }
 
@@ -596,10 +596,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
 
         bool early_carry = is_carried((uint16_t)~source_value, 1, bw_flag);
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           result = *destination_addr + (uint16_t) unsigned_source_value; 
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           result = *(uint8_t *)destination_addr + (uint8_t)unsigned_source_value;
         }
         
@@ -623,10 +623,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
        */
       case 0xA:{
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           
         }
         
@@ -642,14 +642,14 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
       */
       case 0xB:{
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           uint16_t result = ((uint16_t) source_value) & (*destination_addr);
 
           cpu->sr.zero = (result == 0);
           cpu->sr.negative = result >> 15;
           cpu->sr.carry = (result != 0);
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           uint8_t result = 
             ((uint8_t) source_value) & (*(uint8_t *) destination_addr);
 
@@ -669,10 +669,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
        */
       case 0xC:{
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           *destination_addr &= (uint16_t) ~source_value;
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *(uint8_t *) destination_addr &= (uint8_t) ~source_value;	
         }
         
@@ -684,10 +684,10 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
        */
       case 0xD:{
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           *destination_addr |= (uint16_t) source_value;
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *(uint8_t *) destination_addr |= (uint8_t) source_value;	
         }
         
@@ -703,7 +703,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
        */
       case 0xE:{
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           cpu->sr.overflow = 
             (*destination_addr >> 15) && ((uint16_t)source_value >> 15);
 
@@ -713,7 +713,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
           cpu->sr.zero = (*destination_addr == 0);
           cpu->sr.carry = (*destination_addr != 0);
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           cpu->sr.overflow = 
             (*(uint8_t *)destination_addr >> 7) && ((uint8_t)source_value >> 7);
 
@@ -736,14 +736,14 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
        */
       case 0xF:{
 
-        if (bw_flag == WORD) {
+        if (bw_flag == EMU_WORD) {
           *destination_addr &= (uint16_t)source_value;	
 
           cpu->sr.negative = (*destination_addr) >> 15;
           cpu->sr.zero = (*destination_addr == 0);
           cpu->sr.carry = (*destination_addr != 0);
         }
-        else if (bw_flag == BYTE) {
+        else if (bw_flag == EMU_BYTE) {
           *(uint8_t *) destination_addr &= (uint8_t) source_value;	
 
           cpu->sr.negative = (*(uint8_t *) destination_addr) >> 7;
@@ -766,84 +766,84 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
   else {
     switch (opcode) {      
       case 0x4: {
-	bw_flag == WORD ? 
+	bw_flag == EMU_WORD ?
           strncpy(mnemonic, "MOV", sizeof mnemonic) :
           strncpy(mnemonic, "MOV.B", sizeof mnemonic);
 
         break;
       }
       case 0x5: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "ADD", sizeof mnemonic) :
           strncpy(mnemonic, "ADD.B", sizeof mnemonic);
 
         break;
       }
       case 0x6: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "ADDC", sizeof mnemonic) :
           strncpy(mnemonic, "ADDC.B", sizeof mnemonic);
 	
         break;
       }
       case 0x7: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "SUBC", sizeof mnemonic) :
           strncpy(mnemonic, "SUBC.B", sizeof mnemonic);
         
         break;
       }
       case 0x8: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "SUB", sizeof mnemonic) :
           strncpy(mnemonic, "SUB.B", sizeof mnemonic);
 
         break;
       }
       case 0x9: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "CMP", sizeof mnemonic) :
           strncpy(mnemonic, "CMP.B", sizeof mnemonic);
 
         break;
       }
       case 0xA: {
-	bw_flag == WORD ? 
+	bw_flag == EMU_WORD ?
           strncpy(mnemonic, "DADD", sizeof mnemonic) :
           strncpy(mnemonic, "DADD.B", sizeof mnemonic);
         
         break;
       }
       case 0xB: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "BIT", sizeof mnemonic) :
           strncpy(mnemonic, "BIT.B", sizeof mnemonic);
 
         break;
       }     
       case 0xC: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "BIC", sizeof mnemonic) :
           strncpy(mnemonic, "BIC.B", sizeof mnemonic);
                 
         break;
       }
       case 0xD: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "BIS", sizeof mnemonic) :
           strncpy(mnemonic, "BIS.B", sizeof mnemonic);
                 
         break;
       }
       case 0xE: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "XOR", sizeof mnemonic) :
           strncpy(mnemonic, "XOR.B", sizeof mnemonic);
         
         break;
       }
       case 0xF: {
-        bw_flag == WORD ? 
+        bw_flag == EMU_WORD ?
           strncpy(mnemonic, "AND", sizeof mnemonic) :
           strncpy(mnemonic, "AND.B", sizeof mnemonic);
         

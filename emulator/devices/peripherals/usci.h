@@ -40,8 +40,7 @@ typedef struct Ctl0
   // Idle-line multiprocessor mode (01)
   // Address-bit multiprocessor mode (10)
   // UART mode with automatic baud rate detection (11)
-  uint8_t UCMODE : 2;
-  
+  uint8_t UCMODE;
   bool UCSYNC;       // Synchronous mode enable: Async (0) Sync (1)
 } Ctl0;
 
@@ -49,28 +48,28 @@ typedef struct Ctl0
 typedef struct Ctl1 {
   // USCI clock source select, these bits select the Baud rate source clock.
   // UCLK: 00 | ACLK: 01 | SMCLK: 10 | SMCLK: 11
-  uint8_t UCSSEL : 2;  
+  uint8_t UCSSEL;
 
-  bool UCRXEIE : 1; // Recv erroneous-character interrupt enable
-  bool UCBRKIE : 1; // receive break character interrupt enable
+  bool UCRXEIE; // Recv erroneous-character interrupt enable
+  bool UCBRKIE; // receive break character interrupt enable
 
   // dormant. Puts SCI into sleep mode: 
   // 0 - Not dormant. All received chars will set UCAxRXIFG
   // 1 - Dormant. Only chars that are preceded by an idle line or addr bit
-  bool UCDORM : 1;
+  bool UCDORM;
 
   // Transmit address, Next frame to be transmitted will be marked as address
   // Depedning on the selected multiproc mode. Data (0) Address (1)
-  bool UCTXADDR : 1;
+  bool UCTXADDR;
 
   // Transmit break, transmits a break with the next write to the TX buffer
   // Not a break (0) Transmit a break (1)
-  bool UCTXBRK : 1;
+  bool UCTXBRK;
   
   // Software reset enable: 
   // Disabled. USCI reset released for operation (0)
   // Enabled. USCI logic held in reset start. (1)
-  bool UCSWRST : 1;  
+  bool UCSWRST;
 } Ctl1;
 
 typedef struct Usci 

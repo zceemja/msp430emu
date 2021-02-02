@@ -36,8 +36,8 @@ void decode(Emulator *emu, uint16_t instruction, bool disassemble);
 uint16_t fetch(Emulator *emu);
 
 enum { 
-  WORD, 
-  BYTE 
+  EMU_WORD,
+  EMU_BYTE
 };
 
 enum {

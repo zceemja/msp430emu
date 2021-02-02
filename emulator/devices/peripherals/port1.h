@@ -26,15 +26,15 @@ struct Port_1 {
   // Peripheral register pointers
   
   // Port 1        = r/w =   = reset? =
-  uint8_t *IN;   /* r          -      */
-  uint8_t *OUT;  /* r/w     unchanged */
-  uint8_t *DIR;  /* r/w     PUC reset */
-  uint8_t *IFG;  /* r/w     PUC reset */
-  uint8_t *IES;  /* r/w     unchanged */
-  uint8_t *IE;   /* r/w     PUC reset */
-  uint8_t *SEL;  /* r/w     PUC reset */
-  uint8_t *SEL2; /* r/w     PUC reset */
-  uint8_t *REN;  /* r/w     PUC reset */
+  uint8_t *_IN;   /* r          -      */
+  uint8_t *_OUT;  /* r/w     unchanged */
+  uint8_t *_DIR;  /* r/w     PUC reset */
+  uint8_t *_IFG;  /* r/w     PUC reset */
+  uint8_t *_IES;  /* r/w     unchanged */
+  uint8_t *_IE;   /* r/w     PUC reset */
+  uint8_t *_SEL;  /* r/w     PUC reset */
+  uint8_t *_SEL2; /* r/w     PUC reset */
+  uint8_t *_REN;  /* r/w     PUC reset */
 
   // Peripherals activation flags (for emulator)
   bool DIR_0, OUT_0, IFG_0, IE_0, SEL_0, SEL2_0;

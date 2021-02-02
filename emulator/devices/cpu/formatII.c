@@ -91,7 +91,7 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
       sprintf(asm_operand, "%s", reg_name);
     }
 
-    bw_flag == BYTE ? *reg &= 0x00FF : 0;
+    bw_flag == EMU_BYTE ? *reg &= 0x00FF : 0;
   }
 
   /* Indexed;      Ex: PUSH 0x0(Rs) */
@@ -172,10 +172,10 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
       sprintf(hex_str_part, "%04X", (uint16_t) source_value);
       strncat(hex_str, hex_str_part, sizeof hex_str);
 
-      if (bw_flag == WORD) {
+      if (bw_flag == EMU_WORD) {
         sprintf(asm_operand, "#0x%04X", (uint16_t) source_value);
       }
-      else if (bw_flag == BYTE) {
+      else if (bw_flag == EMU_BYTE) {
         sprintf(asm_operand, "#0x%04X", (uint8_t) source_value);
       }
     }
@@ -184,7 +184,7 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
       source_value = *source_address;
 
       sprintf(asm_operand, "@%s+", reg_name);
-      bw_flag == WORD ? *reg += 2 : (*reg += 1);
+      bw_flag == EMU_WORD ? *reg += 2 : (*reg += 1);
     }
   }
 
@@ -208,12 +208,12 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
     case 0x0:{
       bool CF = cpu->sr.carry;
 
-      if (bw_flag == WORD) {
+      if (bw_flag == EMU_WORD) {
 	cpu->sr.carry = *source_address & 0x0001;  /* Set CF from LSB */
 	*source_address >>= 1;                /* Shift one right */
 	CF ? *source_address |= 0x8000 : 0;   /* Set MSB from prev CF */
       }
-      else if (bw_flag == BYTE){
+      else if (bw_flag == EMU_BYTE){
 	cpu->sr.carry = *(uint8_t *) source_address & 0x01;
 	*(uint8_t *) source_address >>= 1;
 	CF ? *(uint8_t *) source_address |= 0x80 : 0;
@@ -249,13 +249,13 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
        * V: Reset
        */
     case 0x2:{
-      if (bw_flag == WORD) {
+      if (bw_flag == EMU_WORD) {
 	cpu->sr.carry = *source_address & 0x0001;
 	bool msb = *source_address >> 15;
 	*source_address >>= 1;
 	msb ? *source_address |= 0x8000 : 0; /* Extend Sign */
       }
-      else if (bw_flag == BYTE) {
+      else if (bw_flag == EMU_BYTE) {
 	cpu->sr.carry = *source_address & 0x0001;
 	bool msb = *source_address >> 7;
 	*source_address >>= 1;
@@ -287,8 +287,8 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
 	*source_address &= 0x00FF;
       }
     
-      cpu->sr.negative = is_negative((int16_t*)source_address, WORD);
-      cpu->sr.zero = is_zero(source_address, WORD);
+      cpu->sr.negative = is_negative((int16_t*)source_address, EMU_WORD);
+      cpu->sr.zero = is_zero(source_address, EMU_WORD);
       cpu->sr.carry = ! cpu->sr.zero;
       cpu->sr.overflow = false;
 
@@ -306,10 +306,10 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
       cpu->sp -= 2; /* Yes, even for BYTE Instructions */
       uint16_t *stack_address = get_stack_ptr(emu);
     
-      if (bw_flag == WORD) {
+      if (bw_flag == EMU_WORD) {
 	*stack_address = source_value;
       }
-      else if (bw_flag == BYTE) {
+      else if (bw_flag == EMU_BYTE) {
 	*stack_address &= 0xFF00; /* Zero out bottom half for pushed byte */
 	*stack_address |= (uint8_t) source_value;
       }
@@ -349,7 +349,7 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
   else {    
     switch (opcode) {
     case 0x0: {
-      bw_flag == WORD ?
+      bw_flag == EMU_WORD ?
 	strncpy(mnemonic, "RRC", sizeof mnemonic) :
 	strncpy(mnemonic, "RRC.B", sizeof mnemonic);    
 
@@ -360,7 +360,7 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
       break;
     }
     case 0x2: {
-      bw_flag == WORD ?
+      bw_flag == EMU_WORD ?
 	strncpy(mnemonic, "RRA", sizeof mnemonic) :
 	strncpy(mnemonic, "RRA.B", sizeof mnemonic);     
 
@@ -371,7 +371,7 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
       break;
     }
     case 0x4: {
-      bw_flag == WORD ?
+      bw_flag == EMU_WORD ?
 	strncpy(mnemonic, "PUSH", sizeof mnemonic) :
 	strncpy(mnemonic, "PUSH.B", sizeof mnemonic);    
 

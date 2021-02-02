@@ -193,8 +193,16 @@ class EmulatorWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnStart, btn_start_emu)
         btn_stop_emu = wx.Button(self, -1, "Pause")
         self.Bind(wx.EVT_BUTTON, self.OnPause, btn_stop_emu)
+
+        btn_key = wx.Button(self, -1, "Press Key")
+        self.Bind(wx.EVT_BUTTON, self.OnKeyPress, btn_key)
+        btn_rst = wx.Button(self, -1, "Reset")
+        self.Bind(wx.EVT_BUTTON, self.OnKeyReset, btn_rst)
+
+        self.sizer2.Add(btn_key, 1, wx.EXPAND)
         self.sizer2.Add(btn_start_emu, 1, wx.EXPAND)
         self.sizer2.Add(btn_stop_emu, 1, wx.EXPAND)
+        self.sizer2.Add(btn_rst, 1, wx.EXPAND)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -217,23 +225,23 @@ class EmulatorWindow(wx.Frame):
         # dc.SetBrush(wx.WHITE_BRUSH)
         # dc.DrawRectangle(50, 50, 500, 500)
 
-        self.sizer_key_rst = wx.BoxSizer(wx.HORIZONTAL)
-        btn_key = wx.Button(self, -1, "Press Key")
-        self.Bind(wx.EVT_BUTTON, self.OnKeyPress, btn_key)
-        btn_rst = wx.Button(self, -1, "Reset")
-        self.Bind(wx.EVT_BUTTON, self.OnKeyReset, btn_rst)
-        self.sizer_key_rst.Add(btn_key, 1, wx.EXPAND)
-        self.sizer_key_rst.Add(btn_rst, 1, wx.EXPAND)
+        # self.sizer_key_rst = wx.BoxSizer(wx.HORIZONTAL)
+        # btn_key = wx.Button(self, -1, "Press Key")
+        # self.Bind(wx.EVT_BUTTON, self.OnKeyPress, btn_key)
+        # btn_rst = wx.Button(self, -1, "Reset")
+        # self.Bind(wx.EVT_BUTTON, self.OnKeyReset, btn_rst)
+        # self.sizer_key_rst.Add(btn_key, 1, wx.EXPAND)
+        # self.sizer_key_rst.Add(btn_rst, 1, wx.EXPAND)
 
         self.sizer_diagram = wx.BoxSizer(wx.VERTICAL)
         self.sizer_diagram.Add(panel, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
         #
-        self.sizer_left = wx.BoxSizer(wx.VERTICAL)
-        self.sizer_left.Add(self.sizer_diagram, 1, wx.EXPAND)
-        self.sizer_left.Add(self.sizer_key_rst, 0, wx.ALIGN_BOTTOM)
+        # self.sizer_left = wx.BoxSizer(wx.VERTICAL)
+        # self.sizer_left.Add(self.sizer_diagram, 1, wx.EXPAND)
+        # self.sizer_left.Add(self.sizer_key_rst, 0, wx.ALIGN_BOTTOM)
 
         self.sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer1.Add(self.sizer_left, 0, wx.EXPAND)
+        self.sizer1.Add(self.sizer_diagram, 0, wx.EXPAND)
         self.sizer1.Add(self.control, 1, wx.EXPAND)
         self.sizer1.Add(self.sizer0, 1, wx.EXPAND)
 

@@ -21,12 +21,13 @@ emulator_files = [
     'emulator/debugger/disassembler.c',
     'emulator/python/py_functions.c',
     'emulator/python/py_interface.c',
+    'emulator/win.c',
 ]
 libraries = [
     # 'websockets',
-    'readline',
-    'rt',
-    'pthread',
+    # 'readline',
+    # 'rt',
+    # 'pthread',
     # 'ssl',
     # 'crypto',
 ]

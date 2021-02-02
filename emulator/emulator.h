@@ -3,7 +3,7 @@
 #define _EMULATOR_H_
 
 #include <stdio.h>
-#include <time.h>
+//#include <time.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
@@ -19,6 +19,9 @@
 #ifdef WEBSOCKETS
 #include <libwebsockets.h>
 #endif
+
+// Windows compatibility
+
 
 typedef struct Emulator Emulator;
 
@@ -49,6 +52,7 @@ typedef struct Packet Packet;
 #include "debugger/debugger.h"
 #include "debugger/register_display.h"
 #include "debugger/disassembler.h"
+#include "win.h"
 
 #ifdef PYTHON
 #include "python/py_interface.h"

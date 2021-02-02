@@ -371,3 +371,9 @@ class DrawRect(wx.Panel):
             self.dc.SetBrush(wx.Brush(self.RED, wx.SOLID))
             self.dc.DrawRectangle(70, 356, 8, 15)
         del self.dc
+
+
+def run(load=None):
+    app = wx.App(False)
+    frame = EmulatorWindow(None, "MSP430 Emulator", load)
+    app.MainLoop()

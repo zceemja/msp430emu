@@ -4,13 +4,9 @@
 
 More detailed description for multiple platforms will be added.
 
-To build from source:
+Install latest via pip:
 ```bash
-# Build
-python setup.py build
-
-# Install
-python setup.py install
+pip install https://gogs.infcof.com/UCL/msp430emu/archive/master.zip
 ```
 
 ## Work Done
@@ -18,14 +14,17 @@ python setup.py install
 List of features that are added:
 
 - [x] Source build on linux
-- [ ] Source build on windows
+- [x] Source build on windows
 - [ ] Source build on mac
 - [x] Working Emulator
 - [x] Python GUI
 - [x] Blinking LEDs
 - [x] UART Serial output
 - [ ] UART Serial input
-- [ ] Reset and P1.3 button
+- [x] Reset button
+- [ ] Button for P1.3
 - [ ] GPIO Oscilloscope
 - [ ] Port 2 GPIO
+- [ ] Invalid register configuration checks
+- [ ] Information about UART Band
 - [ ] ADC

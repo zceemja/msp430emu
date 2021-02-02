@@ -9,6 +9,4 @@ if __name__ == '__main__':
             load = sys.argv[1]
         else:
             print(f"File '{sys.argv[1]}' does not exist")
-    app = emulator.wx.App(False)
-    frame = emulator.EmulatorWindow(None, "MSP430 Emulator", load)
-    app.MainLoop()
+    emulator.run(load)

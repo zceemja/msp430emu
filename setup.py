@@ -31,7 +31,7 @@ class BinaryDistribution(Distribution):
 
 
 setup(name='msp430emu',
-      version='0.1',
+      version='0.2',
       description='MSP 430 Emulator',
       author_email='zceemja@ucl.ac.uk',
       packages=['msp430emu'],

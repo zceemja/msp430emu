@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <pthread.h>
 
 #include "../cpu/registers.h"
 #include "../utilities.h"

@@ -9,12 +9,12 @@
 #include <string.h>
 #include <stdint.h>
 #include <signal.h>
-#include <sys/wait.h>
+//#include <sys/wait.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <pthread.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+//#include <pthread.h>
+//#include <readline/readline.h>
+//#include <readline/history.h>
 
 #ifdef WEBSOCKETS
 #include <libwebsockets.h>

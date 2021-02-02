@@ -20,7 +20,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <termios.h>
 #include <stdint.h>
 #include <fcntl.h>
 

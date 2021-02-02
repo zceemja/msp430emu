@@ -36,11 +36,11 @@ typedef struct Debugger
 
   unsigned int ws_port;
 
-  pthread_t web_server_thread;
+  //pthread_t web_server_thread;
   bool web_server_ready;
   bool web_firmware_uploaded;
 
-  pthread_t gui_thread;
+  //pthread_t gui_thread;
 
   char mnemonic[50];
 

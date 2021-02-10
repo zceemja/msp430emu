@@ -1,6 +1,6 @@
 #include "py_functions.h"
 // This is an ugly solution but heh
-Emulator *emuInst;
+Emulator *emuInst = NULL;
 
 void play_emu() {
     emuInst->cpu->running = true;
@@ -20,13 +20,13 @@ void pause_emu() {
 }
 
 void reset_emu() {
-    if(!emuInst) return;
+    if(emuInst == NULL) return;
     emuInst->cpu->pc = 0xC000;
     print_console(emuInst, "Resetting program counter to 0xC000\n");
 }
 
 void set_reg(uint8_t reg_type, uint8_t value) {
-    if(!emuInst) return;
+    if(emuInst == NULL) return;
     switch(reg_type) {
     case SET_REG_P1_IN:
         *emuInst->cpu->p1->_IN = value;
@@ -34,7 +34,7 @@ void set_reg(uint8_t reg_type, uint8_t value) {
 }
 
 PyObject *get_port1_regs() {
-    if(!emuInst) return Py_None;
+    if(emuInst == NULL) return Py_None;
     char regs[9];
     Port_1 *p = emuInst->cpu->p1;
     regs[0] = *p->_OUT;
@@ -50,7 +50,7 @@ PyObject *get_port1_regs() {
 }
 
 void cmd_emu(char *line, int len) {
-    if(!emuInst) return;
+    if(emuInst == NULL) return;
     if (!emuInst->cpu->running && emuInst->debugger->debug_mode) {
         exec_cmd(emuInst, line, len);
 //	         update_register_display(emu);
@@ -58,7 +58,7 @@ void cmd_emu(char *line, int len) {
 }
 
 void stop_emu() {
-    if(!emuInst) return;
+    if(emuInst == NULL) return;
     emuInst->debugger->quit = true;
     print_console(emuInst, "Stopping emulator..\n");
 }
@@ -90,33 +90,33 @@ void start_emu(char *file) {
     setup_usci(emuInst);
 
     load_bootloader(0x0C00);
-    load_firmware(emuInst, file, 0xC000);
+    if(load_firmware(emuInst, file, 0xC000) == 0) {
+        //    display_registers(emuInst);
+        disassemble(emuInst, cpu->pc, 1);
+        //    update_register_display(emuInst);
 
-    display_registers(emuInst);
-    disassemble(emuInst, cpu->pc, 1);
-    update_register_display(emuInst);
+        while (!deb->quit) {
+            // Handle debugger when CPU is not running
+            if (!cpu->running) {
+                usleep(10000);
+                continue;
+            }
 
-    while (!deb->quit) {
-        // Handle debugger when CPU is not running
-        if (!cpu->running) {
-            usleep(10000);
-            continue;
+            // Handle Breakpoints
+            //handle_breakpoints(emuInst);
+
+            // Instruction Decoder
+            decode(emuInst, fetch(emuInst), EXECUTE);
+
+            // Handle Peripherals
+            handle_bcm(emuInst);
+            handle_timer_a(emuInst);
+            handle_port_1(emuInst);
+            handle_usci(emuInst);
+
+            // Average of 4 cycles per instruction
+            mclk_wait_cycles(emuInst, 4);
         }
-
-        // Handle Breakpoints
-        handle_breakpoints(emuInst);
-
-        // Instruction Decoder
-        decode(emuInst, fetch(emuInst), EXECUTE);
-
-        // Handle Peripherals
-        handle_bcm(emuInst);
-        handle_timer_a(emuInst);
-        handle_port_1(emuInst);
-        handle_usci(emuInst);
-
-        // Average of 4 cycles per instruction
-        mclk_wait_cycles(emuInst, 4);
     }
 
     uninitialize_msp_memspace();

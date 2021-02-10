@@ -50,9 +50,9 @@ static PyObject *method_set_regs(PyObject *self, PyObject *args) {
 
 static PyObject *method_stop(PyObject *self, PyObject *args) {
     stop_emu();
-    Py_XDECREF(pyOnSerial);
-    Py_XDECREF(pyOnConsole);
-    Py_XDECREF(pyOnControl);
+//    Py_XDECREF(pyOnSerial);
+//    Py_XDECREF(pyOnConsole);
+//    Py_XDECREF(pyOnControl);
     return Py_None;
 }
 

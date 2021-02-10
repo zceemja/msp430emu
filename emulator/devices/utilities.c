@@ -38,7 +38,7 @@ void load_bootloader(uint16_t virt_addr)
  * @param file_name The file name of the binary to load into virtual memory
  * @param virt_loc The location in virtual memory to load the firmware
  */
-void load_firmware(Emulator *emu, char *file_name, uint16_t virt_addr)
+int load_firmware(Emulator *emu, char *file_name, uint16_t virt_addr)
 {
     uint32_t size, result;
     char str[100] = {0};
@@ -53,7 +53,7 @@ void load_firmware(Emulator *emu, char *file_name, uint16_t virt_addr)
     if (fd == NULL)
     {
         printf("Could not open %s, exiting.\n", file_name);
-        exit(1);
+        return 1;
     }
 
     /* obtain file size */
@@ -67,7 +67,7 @@ void load_firmware(Emulator *emu, char *file_name, uint16_t virt_addr)
         printf("SizeTooBig\n");
         print_console(emu, "Flash Size too small to fit your binary. Quitting, please refresh to try again. Ensure you are compiling for the right MSP version.\n");
         usleep(20000);
-        exit(1);
+        return 1;
     }
 
     uint16_t *real_addr = get_addr_ptr(virt_addr);

@@ -4,6 +4,8 @@
 #define _PY_INTERFACE_H_
 
 #include "py_functions.h"
+#include "../devices/peripherals/port1.h"
+
 #include <Python.h>
 
 void print_serial (Emulator *emu, char *buf);

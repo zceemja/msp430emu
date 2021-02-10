@@ -20,11 +20,37 @@ void pause_emu() {
 }
 
 void reset_emu() {
+    if(!emuInst) return;
     emuInst->cpu->pc = 0xC000;
     print_console(emuInst, "Resetting program counter to 0xC000\n");
 }
 
+void set_reg(uint8_t reg_type, uint8_t value) {
+    if(!emuInst) return;
+    switch(reg_type) {
+    case SET_REG_P1_IN:
+        *emuInst->cpu->p1->_IN = value;
+    }
+}
+
+PyObject *get_port1_regs() {
+    if(!emuInst) return Py_None;
+    char regs[9];
+    Port_1 *p = emuInst->cpu->p1;
+    regs[0] = *p->_OUT;
+    regs[1] = *p->_DIR;
+    regs[2] = *p->_IFG;
+    regs[3] = *p->_IES;
+    regs[4] = *p->_IE;
+    regs[5] = *p->_SEL;
+    regs[6] = *p->_SEL2;
+    regs[7] = *p->_REN;
+    regs[8] = *p->_IN;
+    return PyBytes_FromStringAndSize(regs, 9);
+}
+
 void cmd_emu(char *line, int len) {
+    if(!emuInst) return;
     if (!emuInst->cpu->running && emuInst->debugger->debug_mode) {
         exec_cmd(emuInst, line, len);
 //	         update_register_display(emu);
@@ -32,6 +58,7 @@ void cmd_emu(char *line, int len) {
 }
 
 void stop_emu() {
+    if(!emuInst) return;
     emuInst->debugger->quit = true;
     print_console(emuInst, "Stopping emulator..\n");
 }

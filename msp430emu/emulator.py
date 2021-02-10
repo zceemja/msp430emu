@@ -1,4 +1,4 @@
-from threading import Thread
+from threading import Thread, Event
 from os import path
 import _msp430emu
 import wx
@@ -38,7 +38,7 @@ class Emulator:
 
         _msp430emu.on_serial(self._on_serial)
         _msp430emu.on_console(self._on_console)
-        _msp430emu.on_control(self._on_control)
+        # _msp430emu.on_control(self._on_control)
 
         if self.load is not None:
             self.process = Thread(target=self._start_emu, daemon=False)
@@ -57,6 +57,10 @@ class Emulator:
     def send_command(self, cmd):
         if self.started:
             _msp430emu.cmd(cmd)
+
+    def get_port1_regs(self):
+        if self.started:
+            return _msp430emu.get_regs(0x05)
 
     def reset(self):
         if self.started:
@@ -84,6 +88,7 @@ class Emulator:
         self.load = fname
         self.process = Thread(target=self._start_emu, daemon=False)
         self.process.start()
+
     #     with open(self.load, 'rb') as f:
     #         self.firmware = fname
     #         fdata = f.read()
@@ -153,7 +158,11 @@ class Emulator:
 
     def close(self):
         if self.started:
-            _msp430emu.stop()
+            try:
+                _msp430emu.pause()
+                _msp430emu.stop()
+            except SystemError:
+                print("Failed gradually stop emulator")
             self.process.join(2)
 
 
@@ -175,11 +184,15 @@ class EmulatorWindow(wx.Frame):
         menuReset = file_menu.Append(wx.ID_CLOSE_ALL, "&Reset", " Reset Emulator")
         self.Bind(wx.EVT_MENU, self.RestartEmulator, menuReset)
         menuExit = file_menu.Append(wx.ID_EXIT, "E&xit", " Terminate the program")
-        self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
+        self.Bind(wx.EVT_MENU, self.OnClose, menuExit)
+        self.Bind(wx.EVT_CLOSE, self.OnExit)
 
         view_menu = wx.Menu()
-        view_console = view_menu.AppendCheckItem(101, "View Console", "Show/Hide Emulator debug console")
-        self.Bind(wx.EVT_MENU, self.ToggleConsole, view_console)
+        self.view_console = view_menu.AppendCheckItem(101, "View Console", "Show/Hide Emulator debug console")
+        self.view_registers = view_menu.AppendCheckItem(102, "View Registers", "Show/Hide Emulator registers table")
+        self.Bind(wx.EVT_MENU, self.ToggleConsole, self.view_console)
+        self.Bind(wx.EVT_MENU, self.ToggleRegisters, self.view_registers)
+        self.registers = None
 
         menuBar = wx.MenuBar()
         menuBar.Append(file_menu, "&File")
@@ -194,7 +207,8 @@ class EmulatorWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnPause, self.btn_stop_emu)
 
         self.btn_key = wx.Button(self, -1, "Press Key")
-        self.Bind(wx.EVT_BUTTON, self.OnKeyPress, self.btn_key)
+        self.btn_key.Bind(wx.EVT_LEFT_DOWN, self.OnMouseDown)
+        self.btn_key.Bind(wx.EVT_LEFT_UP, self.OnMouseUp)
         self.btn_rst = wx.Button(self, -1, "Reset")
         self.Bind(wx.EVT_BUTTON, self.OnKeyReset, self.btn_rst)
 
@@ -253,6 +267,11 @@ class EmulatorWindow(wx.Frame):
         self.sizer.Fit(self)
         self.Show()
 
+        self.timer_locked = True
+        self.timer_running = Event()
+        self.timer = Thread(target=self.OnTimer)
+        self.timer.start()
+
         self.control.WriteText("Initialising Emulator..\n")
         self.load = load
         self.emu = Emulator(load=self.load, callback=self.callback)
@@ -271,9 +290,9 @@ class EmulatorWindow(wx.Frame):
             wx.CallAfter(self.control.AppendText, data)
         elif event == Emulator.EVENT_SERIAL:
             wx.CallAfter(self.serial.AppendText, data)
-        elif event == Emulator.EVENT_GPIO:
-            self.diagram.port1[data // 2] = data % 2 == 0
-            wx.CallAfter(self.diagram.Refresh)
+        # elif event == Emulator.EVENT_GPIO:
+        #     self.diagram.port1[data // 2] = data % 2 == 0
+        #     wx.CallAfter(self.diagram.Refresh)
 
     def RestartEmulator(self, e):
         self.emu.close()
@@ -306,10 +325,29 @@ class EmulatorWindow(wx.Frame):
             self.btn_stop_emu.Enable()
             self.statusBar.SetStatusText("Press start to run emulation")
 
+    def OnTimer(self):
+        while 1:
+            try:
+                if self.timer_running.wait(0.04):
+                    break
+            except TimeoutError:
+                pass
+            if self.timer_locked:
+                continue
+            ports = self.emu.get_port1_regs()
+            if ports is not None:
+                for i in range(8):
+                    self.diagram.port1[i] = (ports[0] >> i) & 1 == 1
+            wx.CallAfter(self.diagram.Refresh)
+            if self.view_registers.IsChecked():
+                wx.CallAfter(self.registers.set_values, self.emu)
+
     def OnPause(self, e):
         self.emu.emulation_pause()
         self.diagram.power = False
         self.diagram.Refresh()
+        self.emu.get_port1_regs()
+        self.timer_locked = True
 
     def OnStart(self, e):
         if self.load is None:
@@ -319,13 +357,23 @@ class EmulatorWindow(wx.Frame):
             self.emu.emulation_start()
             self.diagram.power = True
             self.diagram.Refresh()
+            self.timer_locked = False
+
+    def OnClose(self, e):
+        self.Close(True)
 
     def OnExit(self, e):
         self.emu.close()
-        self.Close(True)
+        self.timer_running.set()
+        e.Skip()
 
-    def OnKeyPress(self, e):
-        pass
+    def OnMouseDown(self, e):
+        print("down")
+        e.Skip()
+
+    def OnMouseUp(self, e):
+        print("up")
+        e.Skip()
 
     def OnKeyReset(self, e):
         self.diagram.port1 = [False, False, False, False, False, False, False, False]
@@ -335,6 +383,56 @@ class EmulatorWindow(wx.Frame):
         text = self.serial_input.GetValue()
         print(text)
         self.serial_input.Clear()
+
+    def ToggleRegisters(self, e):
+        if e.Int == 0:
+            self.registers.Close()
+        else:
+            self.registers = RegisterPanel(self)
+            self.registers.Bind(wx.EVT_CLOSE, self.OnRegistersClose)
+            self.registers.set_values(self.emu)
+
+    def OnRegistersClose(self, e):
+        self.view_registers.Check(False)
+        e.Skip()
+
+
+class RegisterPanel(wx.Frame):
+    def __init__(self, parent):
+        wx.Frame.__init__(self, parent, title="Emulator Registers")
+        self.parent = parent
+        self.grid = wx.FlexGridSizer(9, 2, 0, 10)
+        self.p1_registers = {
+            'P1OUT': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1DIR': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1IFG': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1IES': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1IE': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1SEL': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1SEL2': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1REN': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+            'P1IN': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
+        }
+        gridvals = []
+        for name, text in self.p1_registers.items():
+            text.SetMinSize((80, 15))
+            text.SetValue("00000000")
+            gridvals.append((wx.StaticText(self, label=name),))
+            gridvals.append((text, 1, wx.EXPAND))
+        self.grid.AddMany(gridvals)
+        box = wx.BoxSizer(wx.VERTICAL)
+        box.Add(self.grid, proportion=1, flag=wx.ALL | wx.EXPAND, border=15)
+        self.SetSizer(box)
+        self.Center()
+        self.Show()
+        self.Fit()
+        self.Layout()
+
+    def set_values(self, emu):
+        p1regs = emu.get_port1_regs()
+        if p1regs is not None:
+            for i, reg in enumerate(self.p1_registers.values()):
+                reg.SetValue(f"{p1regs[i]:08b}")
 
 
 class DrawRect(wx.Panel):

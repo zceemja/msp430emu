@@ -19,7 +19,7 @@ List of features that are added:
 
 - [x] Source build on linux
 - [x] Source build on windows
-- [ ] Source build on mac
+- [x] Source build on mac
 - [x] Working Emulator
 - [x] Python GUI
 - [x] Blinking LEDs

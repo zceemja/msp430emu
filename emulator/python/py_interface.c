@@ -26,6 +26,28 @@ static PyObject *method_cmd(PyObject *self, PyObject *args) {
     return Py_None;
 }
 
+static PyObject *method_get_regs(PyObject *self, PyObject *args) {
+    uint8_t reg_type;
+
+    if(!PyArg_ParseTuple(args, "B", &reg_type)) {
+        return NULL;
+    }
+    switch(reg_type) {
+    case GET_REG_P1:
+        return get_port1_regs();
+    }
+    return Py_None;
+}
+
+static PyObject *method_set_regs(PyObject *self, PyObject *args) {
+    uint8_t reg_type, reg_value;
+    if(!PyArg_ParseTuple(args, "BB", &reg_type, &reg_value)) {
+        return NULL;
+    }
+    set_reg(reg_type, reg_value);
+    return Py_None;
+}
+
 static PyObject *method_stop(PyObject *self, PyObject *args) {
     stop_emu();
     Py_XDECREF(pyOnSerial);
@@ -109,6 +131,8 @@ static PyMethodDef RunMethods[] = {
     {"on_serial", method_on_serial, METH_VARARGS, "Set emulator callback for serial"},
     {"on_console", method_on_console, METH_VARARGS, "Set emulator callback for console"},
     {"on_control", method_on_control, METH_VARARGS, "Set emulator callback for control"},
+    {"get_regs", method_get_regs, METH_VARARGS, "Get emulator registers"},
+    {"set_regs", method_set_regs, METH_VARARGS, "Set emulator registers"},
     {NULL, NULL, 0, NULL}
 };
 

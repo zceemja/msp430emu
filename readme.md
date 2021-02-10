@@ -26,7 +26,7 @@ List of features that are added:
 - [x] UART Serial output
 - [ ] UART Serial input
 - [x] Reset button
-- [ ] Button for P1.3
+- [x] Button for P1.3
 - [ ] GPIO Oscilloscope
 - [ ] Port 2 GPIO
 - [ ] Invalid register configuration checks

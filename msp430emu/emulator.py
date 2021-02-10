@@ -28,6 +28,8 @@ class Emulator:
     P1_7_ON_PACKET = 0x0E
     P1_7_OFF_PACKET = 0x0F
 
+    SET_REG_P1_IN = 0x05
+
     def __init__(self, load=None, callback=None):
         # self.process = Popen([path.join(emu_dir, 'MSP430'), str(ws_port)], stdout=PIPE, stderr=PIPE)
         # self.ws_port = ws_port
@@ -62,6 +64,10 @@ class Emulator:
         if self.started:
             return _msp430emu.get_regs(0x05)
 
+    def set_port1_in(self, value):
+        if 255 >= value >= 0 and self.started:
+            return _msp430emu.set_regs(0x05, value)
+
     def reset(self):
         if self.started:
             _msp430emu.reset()
@@ -72,74 +78,15 @@ class Emulator:
         _msp430emu.init(self.load)
         print("stopping emulator...")
 
-    # def _start_ws(self):
-    #     self.ws = websocket.WebSocketApp(
-    #         f"ws://127.0.0.1:{self.ws_port}",
-    #         subprotocols={"emu-protocol"},
-    #         on_open=self._ws_open,
-    #         on_data=self._ws_msg,
-    #         on_error=self._ws_err,
-    #         on_close=self._ws_close
-    #     )
-    #     Thread(target=self.ws.run_forever).start()
-    #
     def load_file(self, fname):
         print("loading " + fname)
         self.load = fname
         self.process = Thread(target=self._start_emu, daemon=False)
         self.process.start()
 
-    #     with open(self.load, 'rb') as f:
-    #         self.firmware = fname
-    #         fdata = f.read()
-    #         name = path.basename(fname)
-    #         payload = b'\x00'  # opcode
-    #         payload += len(fdata).to_bytes(2, byteorder='big')
-    #         payload += len(name).to_bytes(2, byteorder='big')
-    #         payload += name.encode() + fdata
-    #         self.ws.send(payload, websocket.ABNF.OPCODE_BINARY)
-
     def _cb(self, ev, data):
         if callable(self.callback):
             self.callback(ev, data)
-
-    # def _ws_open(self):
-    #     self.started = True
-    #     if self.load is not None:
-    #         self.load_file(self.load)
-    #
-    # def _ws_msg(self, data, frame, x):
-    #     opcode = data[0]
-    #     if opcode == 0:
-    #         if len(data) == 2 and data[1] <= 15:
-    #             self._cb(self.EVENT_GPIO, data[1])
-    #
-    #     elif opcode == 1:
-    #         message = data[1:-1].decode()
-    #         self._cb(self.EVENT_CONSOLE, message)
-    #         # print(message, end=None)
-    #         return
-    #     elif opcode == 2:
-    #         message = data[1:-1].decode()
-    #         self._cb(self.EVENT_SERIAL, message)
-    #         return
-    #     else:
-    #         pass
-
-    # def _ws_err(self, err):
-    #     if not self.started:
-    #         self.start_errors += 1
-    #         if self.start_errors < 5:
-    #             print(f"Failed to connect to emulator backend attempt {self.start_errors}")
-    #             sleep(1)
-    #             self._start_ws()
-    #         raise ConnectionError("Failed to connect to emulation backend after 5 tries")
-    #     raise err
-    #
-    # def _ws_close(self):
-    #     if not self.started:
-    #         return
-    #     pass
 
     def __del__(self):
         self.close()
@@ -159,7 +106,6 @@ class Emulator:
     def close(self):
         if self.started:
             try:
-                _msp430emu.pause()
                 _msp430emu.stop()
             except SystemError:
                 print("Failed gradually stop emulator")
@@ -368,11 +314,11 @@ class EmulatorWindow(wx.Frame):
         e.Skip()
 
     def OnMouseDown(self, e):
-        print("down")
+        self.emu.set_port1_in(8)  # P1.3 high
         e.Skip()
 
     def OnMouseUp(self, e):
-        print("up")
+        self.emu.set_port1_in(0)  # P1.3 low
         e.Skip()
 
     def OnKeyReset(self, e):

@@ -210,3 +210,5 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# Mac stuff
+*.DS_Store

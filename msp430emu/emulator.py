@@ -2,7 +2,7 @@ from threading import Thread, Event
 from os import path
 import sys
 import _msp430emu
-import version
+from . import version
 import wx
 from wx.adv import RichToolTip
 

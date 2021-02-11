@@ -74,7 +74,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
   int16_t source_value, source_offset;
   int16_t destination_offset;
   uint16_t *destination_addr;
-  char asm_operands[20] = {0}, asm_op2[20] = {0};
+  char asm_operands[21] = {0}, asm_op2[20] = {0};
 
   /* Register - Register;     Ex: MOV Rs, Rd */
   /* Constant Gen - Register; Ex: MOV #C, Rd */ /* 0 */

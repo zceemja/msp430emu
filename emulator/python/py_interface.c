@@ -175,10 +175,7 @@ void print_serial(Emulator *emu, char *buf) {
 
 
 void print_console (Emulator *emu, const char *buf) {
-    if(pyOnConsole == NULL) {
-        puts(buf);
-        return;
-    }
+    if(pyOnConsole == NULL) return;
 
     // set thread state
     PyGILState_STATE gstate;

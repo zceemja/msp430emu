@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from setuptools.dist import Distribution
 from distutils.core import setup, Extension
-
+from distutils.util import convert_path
 
 emulator_files = [
     'emulator/devices/utilities.c',
@@ -24,6 +24,11 @@ emulator_files = [
     'emulator/win.c',
 ]
 
+main_ns = {}
+ver_path = convert_path('msp430emu/version.py')
+with open(ver_path) as ver_file:
+    exec(ver_file.read(), main_ns)
+
 
 class BinaryDistribution(Distribution):
     def is_pure(self):
@@ -31,9 +36,9 @@ class BinaryDistribution(Distribution):
 
 
 setup(name='msp430emu',
-      version='0.3',
-      description='MSP 430 Emulator',
-      author_email='zceemja@ucl.ac.uk',
+      version=main_ns['__version__'],
+      description=main_ns['description'],
+      author_email=main_ns['__author__'],
       packages=['msp430emu'],
       package_dir={'msp430emu': 'msp430emu'},
       package_data={'msp430emu': ['*.png']},

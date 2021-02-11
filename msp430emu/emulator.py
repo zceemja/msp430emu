@@ -1,6 +1,8 @@
 from threading import Thread, Event
 from os import path
+import sys
 import _msp430emu
+import version
 import wx
 from wx.adv import RichToolTip
 
@@ -153,6 +155,8 @@ class EmulatorWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnLoad, menuReload)
         # menuReset = file_menu.Append(wx.ID_CLOSE_ALL, "&Reset", " Reset Emulator")
         # self.Bind(wx.EVT_MENU, self.RestartEmulator, menuReset)
+        menuAbout = file_menu.Append(wx.ID_ABOUT, "About", "About")
+        self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         menuExit = file_menu.Append(wx.ID_EXIT, "E&xit", " Terminate the program")
         self.Bind(wx.EVT_MENU, self.OnClose, menuExit)
         self.Bind(wx.EVT_CLOSE, self.OnExit)
@@ -335,6 +339,9 @@ class EmulatorWindow(wx.Frame):
         self.timer_running.set()
         e.Skip()
 
+    def OnAbout(self, e):
+        AboutWindow(self)
+
     def OnMouseDown(self, e):
         if self.emu_paused:
             e.Skip()
@@ -392,7 +399,6 @@ class EmulatorWindow(wx.Frame):
             panel.Show()
         self.sizer.Fit(self)
         self.Layout()
-
 
 
 class RegisterPanel(wx.Panel):
@@ -457,6 +463,32 @@ class RegisterPanel(wx.Panel):
                 continue
             for i, reg in enumerate(regs.values()):
                 reg.SetValue(f"{values[i]:08b}")
+
+
+class AboutWindow(wx.Frame):
+    def __init__(self, parent, title="About"):
+        super().__init__(parent, title=title)
+        self.vbox = wx.BoxSizer(wx.VERTICAL)
+        self._add_text(version.description)
+        self._add_text("version: " + version.__version__, 20)
+        self._add_text("wx version: " + wx.VERSION_STRING)
+        self._add_text("python: " + sys.version)
+        box = wx.BoxSizer()
+        box.Add(self.vbox, 1, wx.ALL | wx.EXPAND, border=20)
+        self.SetSizer(box)
+        self.Layout()
+        self.Fit()
+        self.Center()
+        self.Show()
+
+    def _add_text(self, text, bottom=0):
+        stext = wx.StaticText(self, label=text, style=wx.ALIGN_CENTRE_HORIZONTAL)
+        if bottom > 0:
+            self.vbox.Add(stext, 0, wx.BOTTOM | wx.EXPAND, border=bottom)
+        else:
+            self.vbox.Add(stext, 0, wx.EXPAND)
+
+
 
 
 class DrawRect(wx.Panel):

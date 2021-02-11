@@ -2,6 +2,7 @@ from threading import Thread, Event
 from os import path
 import _msp430emu
 import wx
+from wx.adv import RichToolTip
 
 source_dir = path.dirname(path.realpath(__file__))
 
@@ -79,6 +80,7 @@ class Emulator:
         print("stopping emulator...")
 
     def load_file(self, fname):
+        self.close()
         print("loading " + fname)
         self.load = fname
         self.process = Thread(target=self._start_emu, daemon=False)
@@ -127,8 +129,10 @@ class EmulatorWindow(wx.Frame):
         file_menu = wx.Menu()
         menuFile = file_menu.Append(wx.ID_OPEN, "&Firmware", " Open firmware")
         self.Bind(wx.EVT_MENU, self.OnOpen, menuFile)
-        menuReset = file_menu.Append(wx.ID_CLOSE_ALL, "&Reset", " Reset Emulator")
-        self.Bind(wx.EVT_MENU, self.RestartEmulator, menuReset)
+        menuReload = file_menu.Append(wx.ID_RESET, "Reload", " Reopen the same firmware file")
+        self.Bind(wx.EVT_MENU, self.OnLoad, menuReload)
+        # menuReset = file_menu.Append(wx.ID_CLOSE_ALL, "&Reset", " Reset Emulator")
+        # self.Bind(wx.EVT_MENU, self.RestartEmulator, menuReset)
         menuExit = file_menu.Append(wx.ID_EXIT, "E&xit", " Terminate the program")
         self.Bind(wx.EVT_MENU, self.OnClose, menuExit)
         self.Bind(wx.EVT_CLOSE, self.OnExit)
@@ -138,7 +142,8 @@ class EmulatorWindow(wx.Frame):
         self.view_registers = view_menu.AppendCheckItem(102, "View Registers", "Show/Hide Emulator registers table")
         self.Bind(wx.EVT_MENU, self.ToggleConsole, self.view_console)
         self.Bind(wx.EVT_MENU, self.ToggleRegisters, self.view_registers)
-        self.registers = None
+        self.registers = RegisterPanel(self)
+        self.registers.Hide()
 
         menuBar = wx.MenuBar()
         menuBar.Append(file_menu, "&File")
@@ -155,6 +160,7 @@ class EmulatorWindow(wx.Frame):
         self.btn_key = wx.Button(self, -1, "Press Key")
         self.btn_key.Bind(wx.EVT_LEFT_DOWN, self.OnMouseDown)
         self.btn_key.Bind(wx.EVT_LEFT_UP, self.OnMouseUp)
+        self.btn_key_down = False
         self.btn_rst = wx.Button(self, -1, "Reset")
         self.Bind(wx.EVT_BUTTON, self.OnKeyReset, self.btn_rst)
 
@@ -202,7 +208,8 @@ class EmulatorWindow(wx.Frame):
 
         self.sizer1 = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer1.Add(self.sizer_diagram, 0, wx.EXPAND)
-        self.sizer1.Add(self.control, 1, wx.EXPAND)
+        self.sizer1.Add(self.registers, 0, wx.EXPAND)
+        self.sizer1.Add(self.control, 0, wx.EXPAND)
         self.sizer1.Add(self.sizer0, 1, wx.EXPAND)
 
         self.sizer.Add(self.sizer1, 1, wx.EXPAND)
@@ -213,7 +220,7 @@ class EmulatorWindow(wx.Frame):
         self.sizer.Fit(self)
         self.Show()
 
-        self.timer_locked = True
+        self.emu_paused = True
         self.timer_running = Event()
         self.timer = Thread(target=self.OnTimer)
         self.timer.start()
@@ -249,10 +256,13 @@ class EmulatorWindow(wx.Frame):
     def ToggleConsole(self, e):
         if e.Int == 0:
             self.control.Hide()
+            self.sizer.Fit(self)
             self.Layout()
         else:
             self.control.Show()
+            self.sizer.Fit(self)
             self.Layout()
+
 
     def OnOpen(self, e):
         with wx.FileDialog(self, "Open Firmware File", wildcard="BIN files (*.bin)|*.bin",
@@ -260,16 +270,23 @@ class EmulatorWindow(wx.Frame):
             if fileDialog.ShowModal() == wx.ID_CANCEL:
                 return
             self.load = fileDialog.GetPath()
-            self.emu.load_file(self.load)
-            self.diagram.power = False
+            self.OnLoad(None)
 
-            self.serial_input.Enable()
-            self.serial.Enable()
-            self.btn_rst.Enable()
-            self.btn_key.Enable()
-            self.btn_start_emu.Enable()
-            self.btn_stop_emu.Enable()
-            self.statusBar.SetStatusText("Press start to run emulation")
+
+    def OnLoad(self, e):
+        if self.load is None:
+            return
+        self.emu.load_file(self.load)
+        self.diagram.power = False
+        self.emu_paused = True
+
+        self.serial_input.Enable()
+        self.serial.Enable()
+        self.btn_rst.Enable()
+        self.btn_key.Enable()
+        self.btn_start_emu.Enable()
+        self.btn_stop_emu.Enable()
+        self.statusBar.SetStatusText("Press start to run emulation")
 
     def OnTimer(self):
         while 1:
@@ -278,12 +295,14 @@ class EmulatorWindow(wx.Frame):
                     break
             except TimeoutError:
                 pass
-            if self.timer_locked:
+            if self.emu_paused:
                 continue
             ports = self.emu.get_port1_regs()
             if ports is not None:
                 for i in range(8):
                     self.diagram.port1[i] = (ports[0] >> i) & 1 == 1
+            if not self.btn_key_down and ports[0] & 8 and ports[7] & 8 and not ports[1] & 8:
+                self.emu.set_port1_in(8)  # P1.3 high
             wx.CallAfter(self.diagram.Refresh)
             if self.view_registers.IsChecked():
                 wx.CallAfter(self.registers.set_values, self.emu)
@@ -293,7 +312,7 @@ class EmulatorWindow(wx.Frame):
         self.diagram.power = False
         self.diagram.Refresh()
         self.emu.get_port1_regs()
-        self.timer_locked = True
+        self.emu_paused = True
 
     def OnStart(self, e):
         if self.load is None:
@@ -303,7 +322,7 @@ class EmulatorWindow(wx.Frame):
             self.emu.emulation_start()
             self.diagram.power = True
             self.diagram.Refresh()
-            self.timer_locked = False
+            self.emu_paused = False
 
     def OnClose(self, e):
         self.Close(True)
@@ -314,11 +333,34 @@ class EmulatorWindow(wx.Frame):
         e.Skip()
 
     def OnMouseDown(self, e):
-        self.emu.set_port1_in(8)  # P1.3 high
+        if self.emu_paused:
+            e.Skip()
+            return
+        regs = self.emu.get_port1_regs()
+        err = []
+        if regs[1] & 8:
+            err.append("P1DIR is set as output")
+        if regs[5] & 8:
+            err.append("P1SEL is not set to I/O function")
+        if regs[6] & 8:
+            err.append("P1SEL2 is not set to I/O function")
+        if not regs[7] & 8:
+            err.append("P1REN has pullup/pulldown resistor disabled")
+        if regs[7] & 8 and not regs[0] & 8:
+            err.append("P1OUT is set with pull down resistor")
+        if len(err) > 0:
+            tip = RichToolTip("Invalid configuration", '\n'.join(err))
+            tip.SetIcon(wx.ICON_WARNING)
+            tip.ShowFor(self.btn_key)
+        else:
+            self.btn_key_down = True
+            self.emu.set_port1_in(0)  # P1.3 low
         e.Skip()
 
     def OnMouseUp(self, e):
-        self.emu.set_port1_in(0)  # P1.3 low
+        if self.btn_key_down:
+            self.emu.set_port1_in(8)  # P1.3 high
+            self.btn_key_down = False
         e.Skip()
 
     def OnKeyReset(self, e):
@@ -332,21 +374,25 @@ class EmulatorWindow(wx.Frame):
 
     def ToggleRegisters(self, e):
         if e.Int == 0:
-            self.registers.Close()
+            # self.registers.Close()
+            self.registers.Hide()
         else:
-            self.registers = RegisterPanel(self)
-            self.registers.Bind(wx.EVT_CLOSE, self.OnRegistersClose)
-            self.registers.set_values(self.emu)
+            self.registers.Show()
+        self.sizer.Fit(self)
+        self.Layout()
 
-    def OnRegistersClose(self, e):
-        self.view_registers.Check(False)
-        e.Skip()
+            # self.registers = RegisterPanel(self)
+            # self.registers.Bind(wx.EVT_CLOSE, self.OnRegistersClose)
+            # self.registers.set_values(self.emu)
+
+    # def OnRegistersClose(self, e):
+    #     self.view_registers.Check(False)
+    #     e.Skip()
 
 
-class RegisterPanel(wx.Frame):
+class RegisterPanel(wx.Panel):
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title="Emulator Registers")
-        self.parent = parent
+        wx.Panel.__init__(self, parent)
         self.grid = wx.FlexGridSizer(9, 2, 0, 10)
         self.p1_registers = {
             'P1OUT': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),

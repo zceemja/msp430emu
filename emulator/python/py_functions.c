@@ -150,6 +150,8 @@ void start_emu(char *file) {
     setup_port_1(emuInst);
     setup_usci(emuInst);
 
+    print_console(emuInst, " [MSP430 Emulator]\n Copyright (C) 2020 Rudolf Geosits (rgeosits@live.esu.edu)\n");
+
     load_bootloader(0x0C00);
     if(load_firmware(emuInst, file, 0xC000) == 0) {
         //    display_registers(emuInst);

@@ -35,6 +35,12 @@ static PyObject *method_get_regs(PyObject *self, PyObject *args) {
     switch(reg_type) {
     case GET_REG_P1:
         return get_port1_regs();
+    case GET_REG_BCM:
+        return get_bcm_regs();
+    case GET_REG_TIMER_A:
+        return get_timer_regs();
+    case GET_REG_USCI:
+        return get_usci_regs();
     }
     return Py_None;
 }

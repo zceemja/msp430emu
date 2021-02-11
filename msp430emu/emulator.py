@@ -29,7 +29,15 @@ class Emulator:
     P1_7_ON_PACKET = 0x0E
     P1_7_OFF_PACKET = 0x0F
 
-    SET_REG_P1_IN = 0x05
+    REG_NAMES_PORT1 = ['P1OUT', 'P1DIR', 'P1IFG', 'P1IES', 'P1IE', 'P1SEL', 'P1SEL2', 'P1REN', 'P1IN']
+    REG_NAMES_BCM = ['DCOCTL', 'BCSCTL1', 'BCSCTL2', 'BCSCTL3', 'IE1', 'IFG1']
+    REG_NAMES_TIMER_A = [
+        'TA0CTL', 'TA0R', 'TA0CCTL0', 'TA0CCR0', 'TA0CCTL1', 'TA0CCR1', 'TA0CCTL2', 'TA0CCR2', 'TA0IV',
+        'TA1CTL', 'TA1R', 'TA1CCTL0', 'TA1CCR0', 'TA1CCTL1', 'TA1CCR1', 'TA1CCTL2', 'TA1CCR2', 'TA1IV'
+    ]
+    REG_NAMES_USCI = ['UCA0CTL0', 'UCA0CTL1', 'UCA0BR0', 'UCA0BR1', 'UCA0MCTL', 'UCA0STAT',
+                      'UCA0RXBUF', 'UCA0TXBUF', 'UCA0ABCTL', 'UCA0IRTCTL', 'UCA0IRRCTL', 'IFG2'
+    ]
 
     def __init__(self, load=None, callback=None):
         # self.process = Popen([path.join(emu_dir, 'MSP430'), str(ws_port)], stdout=PIPE, stderr=PIPE)
@@ -65,6 +73,18 @@ class Emulator:
         if self.started:
             return _msp430emu.get_regs(0x05)
 
+    def get_bcm_regs(self):
+        if self.started:
+            return _msp430emu.get_regs(0x03)
+
+    def get_timer_a_regs(self):
+        if self.started:
+            return _msp430emu.get_regs(0x07)
+
+    def get_usci_regs(self):
+        if self.started:
+            return _msp430emu.get_regs(0x08)
+
     def set_port1_in(self, value):
         if 255 >= value >= 0 and self.started:
             return _msp430emu.set_regs(0x05, value)
@@ -96,14 +116,10 @@ class Emulator:
     def emulation_pause(self):
         if self.started:
             _msp430emu.pause()
-        # if self.load is not None:
-        #     self.ws.send(b'\x02', websocket.ABNF.OPCODE_BINARY)
 
     def emulation_start(self):
         if self.started:
             _msp430emu.play()
-        # if self.load is not None:
-        #     self.ws.send(b'\x01', websocket.ABNF.OPCODE_BINARY)
 
     def close(self):
         if self.started:
@@ -120,6 +136,10 @@ class EmulatorWindow(wx.Frame):
         self.control = wx.TextCtrl(self, size=wx.Size(400, 450),
                                    style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP)
         self.control.Hide()
+
+        self.control.WriteText("Initialising Emulator..\n")
+        self.load = load
+        self.emu = Emulator(load=self.load, callback=self.callback)
 
         self.serial = wx.TextCtrl(self, size=wx.Size(400, 450), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP)
         self.serial_input = wx.TextCtrl(self)
@@ -139,11 +159,15 @@ class EmulatorWindow(wx.Frame):
 
         view_menu = wx.Menu()
         self.view_console = view_menu.AppendCheckItem(101, "View Console", "Show/Hide Emulator debug console")
-        self.view_registers = view_menu.AppendCheckItem(102, "View Registers", "Show/Hide Emulator registers table")
+        self.view_regs_port1 = view_menu.AppendCheckItem(102, "Port1 Registers", "Show/Hide Emulator Port1 register table")
+        self.view_regs_bcm = view_menu.AppendCheckItem(103, "BCM Registers", "Show/Hide Emulator BCM register table")
+        self.view_regs_timer_a = view_menu.AppendCheckItem(104, "TimerA Registers", "Show/Hide Emulator Timer A register table")
+        self.view_regs_usci = view_menu.AppendCheckItem(105, "USCI Registers", "Show/Hide Emulator USCI register table")
         self.Bind(wx.EVT_MENU, self.ToggleConsole, self.view_console)
-        self.Bind(wx.EVT_MENU, self.ToggleRegisters, self.view_registers)
-        self.registers = RegisterPanel(self)
-        self.registers.Hide()
+        self.Bind(wx.EVT_MENU, self.ToggleRegisters, self.view_regs_port1)
+        self.Bind(wx.EVT_MENU, self.ToggleRegisters, self.view_regs_bcm)
+        self.Bind(wx.EVT_MENU, self.ToggleRegisters, self.view_regs_timer_a)
+        self.Bind(wx.EVT_MENU, self.ToggleRegisters, self.view_regs_usci)
 
         menuBar = wx.MenuBar()
         menuBar.Append(file_menu, "&File")
@@ -185,26 +209,11 @@ class EmulatorWindow(wx.Frame):
         # img =
         # wx.StaticBitmap(panel, -1, img, (0, 0), (img.GetWidth(), img.GetHeight()))
         self.diagram = DrawRect(panel, -1, size=wx.Size(275, 375))
-        #
-        # dc = wx.WindowDC(panel)
-        # dc.SetPen(wx.WHITE_PEN)
-        # dc.SetBrush(wx.WHITE_BRUSH)
-        # dc.DrawRectangle(50, 50, 500, 500)
-
-        # self.sizer_key_rst = wx.BoxSizer(wx.HORIZONTAL)
-        # btn_key = wx.Button(self, -1, "Press Key")
-        # self.Bind(wx.EVT_BUTTON, self.OnKeyPress, btn_key)
-        # btn_rst = wx.Button(self, -1, "Reset")
-        # self.Bind(wx.EVT_BUTTON, self.OnKeyReset, btn_rst)
-        # self.sizer_key_rst.Add(btn_key, 1, wx.EXPAND)
-        # self.sizer_key_rst.Add(btn_rst, 1, wx.EXPAND)
 
         self.sizer_diagram = wx.BoxSizer(wx.VERTICAL)
         self.sizer_diagram.Add(panel, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
-        #
-        # self.sizer_left = wx.BoxSizer(wx.VERTICAL)
-        # self.sizer_left.Add(self.sizer_diagram, 1, wx.EXPAND)
-        # self.sizer_left.Add(self.sizer_key_rst, 0, wx.ALIGN_BOTTOM)
+
+        self.registers = RegisterPanel(self, self.emu)
 
         self.sizer1 = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer1.Add(self.sizer_diagram, 0, wx.EXPAND)
@@ -225,9 +234,6 @@ class EmulatorWindow(wx.Frame):
         self.timer = Thread(target=self.OnTimer)
         self.timer.start()
 
-        self.control.WriteText("Initialising Emulator..\n")
-        self.load = load
-        self.emu = Emulator(load=self.load, callback=self.callback)
         if self.load is None:
             self.serial_input.Disable()
             self.serial.Disable()
@@ -263,7 +269,6 @@ class EmulatorWindow(wx.Frame):
             self.sizer.Fit(self)
             self.Layout()
 
-
     def OnOpen(self, e):
         with wx.FileDialog(self, "Open Firmware File", wildcard="BIN files (*.bin)|*.bin",
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
@@ -271,7 +276,6 @@ class EmulatorWindow(wx.Frame):
                 return
             self.load = fileDialog.GetPath()
             self.OnLoad(None)
-
 
     def OnLoad(self, e):
         if self.load is None:
@@ -304,8 +308,7 @@ class EmulatorWindow(wx.Frame):
             if not self.btn_key_down and ports[0] & 8 and ports[7] & 8 and not ports[1] & 8:
                 self.emu.set_port1_in(8)  # P1.3 high
             wx.CallAfter(self.diagram.Refresh)
-            if self.view_registers.IsChecked():
-                wx.CallAfter(self.registers.set_values, self.emu)
+            wx.CallAfter(self.registers.update_values)
 
     def OnPause(self, e):
         self.emu.emulation_pause()
@@ -373,58 +376,87 @@ class EmulatorWindow(wx.Frame):
         self.serial_input.Clear()
 
     def ToggleRegisters(self, e):
-        if e.Int == 0:
-            # self.registers.Close()
-            self.registers.Hide()
+        if e.Id == self.view_regs_port1.Id:
+            panel = self.registers.panel_port1
+        elif e.Id == self.view_regs_bcm.Id:
+            panel = self.registers.panel_bmc
+        elif e.Id == self.view_regs_timer_a.Id:
+            panel = self.registers.panel_timer_a
+        elif e.Id == self.view_regs_usci.Id:
+            panel = self.registers.panel_usci
         else:
-            self.registers.Show()
+            return
+        if e.Int == 0:
+            panel.Hide()
+        else:
+            panel.Show()
         self.sizer.Fit(self)
         self.Layout()
 
-            # self.registers = RegisterPanel(self)
-            # self.registers.Bind(wx.EVT_CLOSE, self.OnRegistersClose)
-            # self.registers.set_values(self.emu)
-
-    # def OnRegistersClose(self, e):
-    #     self.view_registers.Check(False)
-    #     e.Skip()
 
 
 class RegisterPanel(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, emu: Emulator):
         wx.Panel.__init__(self, parent)
-        self.grid = wx.FlexGridSizer(9, 2, 0, 10)
-        self.p1_registers = {
-            'P1OUT': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1DIR': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1IFG': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1IES': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1IE': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1SEL': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1SEL2': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1REN': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-            'P1IN': wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_NO_VSCROLL),
-        }
-        gridvals = []
-        for name, text in self.p1_registers.items():
-            text.SetMinSize((80, 15))
-            text.SetValue("00000000")
-            gridvals.append((wx.StaticText(self, label=name),))
-            gridvals.append((text, 1, wx.EXPAND))
-        self.grid.AddMany(gridvals)
-        box = wx.BoxSizer(wx.VERTICAL)
-        box.Add(self.grid, proportion=1, flag=wx.ALL | wx.EXPAND, border=15)
-        self.SetSizer(box)
+        self.box = wx.BoxSizer(wx.HORIZONTAL)
+        self.emu = emu
+        self.regs_port1 = {name: None for name in emu.REG_NAMES_PORT1}
+        self.regs_bcm = {name: None for name in emu.REG_NAMES_BCM}
+        self.regs_timer_a = {name: None for name in emu.REG_NAMES_TIMER_A}
+        self.regs_usci = {name: None for name in emu.REG_NAMES_USCI}
+
+        self.grid_port1 = wx.FlexGridSizer(len(self.regs_port1), 2, 0, 10)
+        self.grid_bmc = wx.FlexGridSizer(len(self.regs_bcm), 2, 0, 10)
+        self.grid_timer_a = wx.FlexGridSizer(len(self.regs_timer_a), 2, 0, 10)
+        self.grid_usci = wx.FlexGridSizer(len(self.regs_usci), 2, 0, 10)
+
+        self.panel_port1 = wx.Panel(self)
+        self.panel_bmc = wx.Panel(self)
+        self.panel_timer_a = wx.Panel(self)
+        self.panel_usci = wx.Panel(self)
+
+        # Stucture map of [panel, grid, regs, emu func]
+        self.__struc = [
+            (self.panel_port1, self.grid_port1, self.regs_port1, emu.get_port1_regs),
+            (self.panel_bmc, self.grid_bmc, self.regs_bcm, emu.get_bcm_regs),
+            (self.panel_timer_a, self.grid_timer_a, self.regs_timer_a, emu.get_timer_a_regs),
+            (self.panel_usci, self.grid_usci, self.regs_usci, emu.get_usci_regs),
+        ]
+
+        for panel, grid, regs, _ in self.__struc:
+            gridvals = []
+            for name in regs.keys():
+                text = wx.TextCtrl(panel, style=wx.TE_READONLY | wx.TE_NO_VSCROLL)
+                text.SetMinSize((80, 15))
+                gridvals.append((wx.StaticText(panel, label=name),))
+                gridvals.append((text, 1, wx.EXPAND))
+                regs[name] = text
+            grid.AddMany(gridvals)
+            panel.SetSizer(grid)
+            panel.Hide()
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        vbox.Add(self.panel_port1, proportion=1, flag=wx.ALL | wx.EXPAND)
+        vbox.Add(self.panel_bmc, proportion=1, flag=wx.ALL | wx.EXPAND)
+        self.box.Add(vbox, proportion=1, flag=wx.ALL | wx.EXPAND, border=5)
+        self.box.Add(self.panel_timer_a, proportion=1, flag=wx.ALL | wx.EXPAND, border=5)
+        self.box.Add(self.panel_usci, proportion=1, flag=wx.ALL | wx.EXPAND, border=5)
+        self.SetSizer(self.box)
         self.Center()
         self.Show()
         self.Fit()
         self.Layout()
 
-    def set_values(self, emu):
-        p1regs = emu.get_port1_regs()
-        if p1regs is not None:
-            for i, reg in enumerate(self.p1_registers.values()):
-                reg.SetValue(f"{p1regs[i]:08b}")
+    def update_values(self):
+        for panel, _, regs, emu_func in self.__struc:
+            if not panel.IsShown():
+                continue
+            values = emu_func()
+            if values is None:
+                continue
+            if len(values) != len(regs):
+                continue
+            for i, reg in enumerate(regs.values()):
+                reg.SetValue(f"{values[i]:08b}")
 
 
 class DrawRect(wx.Panel):

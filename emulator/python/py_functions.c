@@ -49,6 +49,67 @@ PyObject *get_port1_regs() {
     return PyBytes_FromStringAndSize(regs, 9);
 }
 
+PyObject *get_bcm_regs() {
+    if(emuInst == NULL) return Py_None;
+    char regs[6];
+    Bcm *bcm = emuInst->cpu->bcm;
+    regs[0] = *bcm->DCOCTL;
+    regs[1] = *bcm->BCSCTL1;
+    regs[2] = *bcm->BCSCTL2;
+    regs[3] = *bcm->BCSCTL3;
+    regs[4] = *bcm->IE1;
+    regs[5] = *bcm->IFG1;
+
+    return PyBytes_FromStringAndSize(regs, 6);
+}
+
+PyObject *get_timer_regs() {
+    if(emuInst == NULL) return Py_None;
+    char regs[18];
+    Timer_a *timer = emuInst->cpu->timer_a;
+    regs[0] = *timer->TA0CTL;
+    regs[1] = *timer->TA0R;
+    regs[2] = *timer->TA0CCTL0;
+    regs[3] = *timer->TA0CCR0;
+    regs[4] = *timer->TA0CCTL1;
+    regs[5] = *timer->TA0CCR1;
+    regs[6] = *timer->TA0CCTL2;
+    regs[7] = *timer->TA0CCR2;
+    regs[8] = *timer->TA0IV;
+
+    regs[9] = *timer->TA1CTL;
+    regs[10] = *timer->TA1R;
+    regs[11] = *timer->TA1CCTL0;
+    regs[12] = *timer->TA1CCR0;
+    regs[13] = *timer->TA1CCTL1;
+    regs[14] = *timer->TA1CCR1;
+    regs[15] = *timer->TA1CCTL2;
+    regs[16] = *timer->TA1CCR2;
+    regs[17] = *timer->TA1IV;
+
+    return PyBytes_FromStringAndSize(regs, 18);
+}
+
+PyObject *get_usci_regs() {
+    if(emuInst == NULL) return Py_None;
+    char regs[12];
+    Usci *usci = emuInst->cpu->usci;
+    regs[0] = *usci->UCA0CTL0;
+    regs[1] = *usci->UCA0CTL1;
+    regs[2] = *usci->UCA0BR0;
+    regs[3] = *usci->UCA0BR1;
+    regs[4] = *usci->UCA0MCTL;
+    regs[5] = *usci->UCA0STAT;
+    regs[6] = *usci->UCA0RXBUF;
+    regs[7] = *usci->UCA0TXBUF;
+    regs[8] = *usci->UCA0ABCTL;
+    regs[9] = *usci->UCA0IRTCTL;
+    regs[10] = *usci->UCA0IRRCTL;
+    regs[11] = *usci->IFG2;
+
+    return PyBytes_FromStringAndSize(regs, 12);
+}
+
 void cmd_emu(char *line, int len) {
     if(emuInst == NULL) return;
     if (!emuInst->cpu->running && emuInst->debugger->debug_mode) {

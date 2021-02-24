@@ -185,7 +185,7 @@ class EmulatorWindow(wx.Frame):
         self.btn_stop_emu = wx.Button(self, -1, "Pause")
         self.Bind(wx.EVT_BUTTON, self.OnPause, self.btn_stop_emu)
 
-        self.btn_key = wx.Button(self, -1, "Press Key")
+        self.btn_key = wx.Button(self, -1, "Press P1.3 Key")
         self.btn_key.Bind(wx.EVT_LEFT_DOWN, self.OnMouseDown)
         self.btn_key.Bind(wx.EVT_LEFT_UP, self.OnMouseUp)
         self.btn_key_down = False
@@ -233,6 +233,7 @@ class EmulatorWindow(wx.Frame):
         self.sizer.Fit(self)
         self.Show()
 
+        self.btn_key.Disable()
         self.emu_paused = True
         self.timer_running = Event()
         self.timer = Thread(target=self.OnTimer)
@@ -286,6 +287,7 @@ class EmulatorWindow(wx.Frame):
             return
         self.emu.load_file(self.load)
         self.diagram.power = False
+        self.btn_key.Disable()
         self.emu_paused = True
 
         self.serial_input.Enable()
@@ -319,7 +321,9 @@ class EmulatorWindow(wx.Frame):
         self.diagram.power = False
         self.diagram.Refresh()
         self.emu.get_port1_regs()
+        self.btn_key.Disable()
         self.emu_paused = True
+
 
     def OnStart(self, e):
         if self.load is None:
@@ -329,6 +333,7 @@ class EmulatorWindow(wx.Frame):
             self.emu.emulation_start()
             self.diagram.power = True
             self.diagram.Refresh()
+            self.btn_key.Enable()
             self.emu_paused = False
 
     def OnClose(self, e):

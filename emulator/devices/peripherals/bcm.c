@@ -18,27 +18,6 @@
 
 #include "bcm.h"
 
-#ifdef _MSC_VER
-#include <Windows.h>
-#else
-#include <time.h>
-#endif
-
-uint64_t getnano() {
-#ifdef _MSC_VER
-    static LARGE_INTEGER frequency;
-    if (frequency.QuadPart == 0) QueryPerformanceFrequency(&frequency);
-    LARGE_INTEGER now;
-    QueryPerformanceCounter(&now);
-    double x = (double)now.QuadPart / (double)frequency.QuadPart;
-    return (uint64_t)(x * 1000000000.0);
-#else
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    return now.tv_sec * 1000000000 + now.tv_nsec;
-#endif
-}
-
 
 void handle_bcm (Emulator *emu) 
 {
@@ -190,14 +169,50 @@ void setup_bcm (Emulator *emu)
 //    return ((timeA_p->tv_sec * 1000000000) + timeA_p->tv_nsec) - ((timeB_p->tv_sec * 1000000000) + timeB_p->tv_nsec);
 //}
 
+double mclk_clock_nstime(Emulator *emu) {
+    Cpu *cpu = emu->cpu;
+    Bcm *bcm = cpu->bcm;
+    double nsec;
+
+    if (bcm->mclk_source == DCOCLK) {
+        nsec = (1.0/(bcm->dco_freq/bcm->mclk_div))*1000000000.0;
+    } else {
+        nsec = (1.0/1030000) * 1000000000.0;
+    }
+    return nsec;
+}
+
 void mclk_wait_cycles (Emulator *emu, uint64_t cycles)
 {
-    Cpu *cpu = emu->cpu;
-    Bcm *bcm = cpu->bcm;  
+//    Cpu *cpu = emu->cpu;
+//    Bcm *bcm = cpu->bcm;
+//
+//    uint64_t start = getnano();
+//
+////    uint64_t start, end;
+////    uint64_t i, elapsed_nsecs;
+//    double thing = 1000;
+//
+//    if (bcm->mclk_source == DCOCLK) {
+//        thing = (1.0/(bcm->dco_freq/bcm->mclk_div))*1000000000.0;
+//    }
+//    thing *= cycles;
+//
+//    if (last_nano > 0) {
+//        thing -= (double)(start - last_nano);
+//    }
+//    if (thing > 0) {
+////        struct timespec tv;
+////        tv.tv_sec = 0;
+////        tv.tv_nsec = (long)thing;
+////        nanosleep(&tv, &tv);
+//        usleep((long)(thing / 1000.0));
+//    }
+//
+//    last_nano = start;
+//    return;
+/*
 
-    uint64_t start, end;
-    uint64_t i, elapsed_nsecs;
-  
     for (i = 0;i < cycles;i++)
     {
         start = getnano();
@@ -223,42 +238,43 @@ void mclk_wait_cycles (Emulator *emu, uint64_t cycles)
             }
         }
     }
+*/
 }
 
 void smclk_wait_cycles (Emulator *emu, uint64_t cycles)
 {
-  Cpu *cpu = emu->cpu;
-  Bcm *bcm = cpu->bcm;  
-  
-  uint64_t start, end;
-  uint64_t i, elapsed_nsecs;
-  
-  for (i = 0;i < cycles;i++) {
-    start = getnano();
-    //    clock_gettime(CLOCK_MONOTONIC, &start);
-
-    while (true) {
-      end = getnano();
-//      clock_gettime(CLOCK_MONOTONIC, &end);
-      elapsed_nsecs = end - start;//nanosec_diff(&end, &start);
-
-      // Choose timing based on clock source
-      if (bcm->mclk_source == DCOCLK) {
-	//printf("div: %llu\n", 
-	//(long long unsigned)(1/(bcm->dco_freq/bcm->mclk_div)));
-
-	double thing = (1.0/(bcm->dco_freq/bcm->mclk_div))*1000000000.0;
-
-	if (elapsed_nsecs >= (uint64_t)thing) {
-	  break;
-	}    
-      }
-      else {
-	puts("Error, clock source");
-      }
-
-    }
-  }
+//  Cpu *cpu = emu->cpu;
+//  Bcm *bcm = cpu->bcm;
+//
+//  uint64_t start, end;
+//  uint64_t i, elapsed_nsecs;
+//
+//  for (i = 0;i < cycles;i++) {
+//    start = getnano();
+//    //    clock_gettime(CLOCK_MONOTONIC, &start);
+//
+//    while (true) {
+//      end = getnano();
+////      clock_gettime(CLOCK_MONOTONIC, &end);
+//      elapsed_nsecs = end - start;//nanosec_diff(&end, &start);
+//
+//      // Choose timing based on clock source
+//      if (bcm->mclk_source == DCOCLK) {
+//	//printf("div: %llu\n",
+//	//(long long unsigned)(1/(bcm->dco_freq/bcm->mclk_div)));
+//
+//	double thing = (1.0/(bcm->dco_freq/bcm->mclk_div))*1000000000.0;
+//
+//	if (elapsed_nsecs >= (uint64_t)thing) {
+//	  break;
+//	}
+//      }
+//      else {
+//	puts("Error, clock source");
+//      }
+//
+//    }
+//  }
   
 }
 /*

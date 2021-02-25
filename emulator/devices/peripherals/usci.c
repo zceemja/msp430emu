@@ -16,9 +16,6 @@
   along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#define TXIFG 0x02
-#define RXIFG 0x01
-
 #include "usci.h"
 
 /*
@@ -101,8 +98,7 @@ void open_pty (Emulator *emu)
 }
 */
 
-void handle_usci (Emulator *emu) 
-{
+void handle_usci (Emulator *emu) {
   Cpu *cpu = emu->cpu;
   Debugger *deb = emu->debugger;
   Usci *usci = cpu->usci;
@@ -127,22 +123,20 @@ void handle_usci (Emulator *emu)
       *usci->IFG2 &= ~TXIFG;
 
       if (c & 0xFF) {
-	if (deb->web_interface) {
-        print_serial(emu, (char*)&str[0]);
-        //write(sp, usci->UCA0TXBUF, 1);
-	}
-	else if (deb->console_interface) {
-        //write(sp, usci->UCA0TXBUF, 1);
-	}
-
-	*usci->UCA0TXBUF = 0;
+        if (deb->web_interface) {
+            print_serial(emu, (char*)&str[0]);
+            //write(sp, usci->UCA0TXBUF, 1);
+        }
+        //else if (deb->console_interface) {
+            //write(sp, usci->UCA0TXBUF, 1);
+        //}
+	    *usci->UCA0TXBUF = 0;
       }
 
       //*usci->IFG2 &= TXIFG;
       *usci->IFG2 |= TXIFG;
     }
   }
-
   return;
 }
 

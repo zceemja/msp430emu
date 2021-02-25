@@ -59,10 +59,12 @@ struct Bcm {
   uint64_t mclk_freq;
 };
 
-uint64_t nanosec_diff(struct timespec *timeA_p, struct timespec *timeB_p);
+//uint64_t nanosec_diff(struct timespec *timeA_p, struct timespec *timeB_p);
 void mclk_wait_cycles (Emulator *emu, uint64_t cycles);
 void smclk_wait_cycles (Emulator *emu, uint64_t cycles);
 void aclk_wait_cycles (Emulator *emu, uint64_t cycles);
+
+double mclk_clock_nstime(Emulator *emu);
 //void *DCO_source (void *data);
 void setup_bcm (Emulator *emu);
 void handle_bcm (Emulator *emu);

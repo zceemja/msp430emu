@@ -26,6 +26,9 @@
 #include "../cpu/registers.h"
 #include "../utilities.h"
 
+#define TXIFG 0x02
+#define RXIFG 0x01
+
 // USCI_Ax Control Register 0
 typedef struct Ctl0 
 {

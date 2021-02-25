@@ -126,6 +126,18 @@ static PyObject *method_on_control(PyObject *self, PyObject *args) {
     return Py_None;
 }
 
+static PyObject *method_write_serial(PyObject *self, PyObject *args) {
+    char *cmd;
+    int len;
+    if(!PyArg_ParseTuple(args, "s#", &cmd, &len)) {
+        return NULL;
+    }
+    Py_BEGIN_ALLOW_THREADS
+    write_serial(cmd, len);
+    Py_END_ALLOW_THREADS
+    return Py_None;
+}
+
 
 static PyMethodDef RunMethods[] = {
     {"init", method_start, METH_VARARGS, "Initialise msp430 emulator"},
@@ -139,6 +151,7 @@ static PyMethodDef RunMethods[] = {
     {"on_control", method_on_control, METH_VARARGS, "Set emulator callback for control"},
     {"get_regs", method_get_regs, METH_VARARGS, "Get emulator registers"},
     {"set_regs", method_set_regs, METH_VARARGS, "Set emulator registers"},
+    {"write_serial", method_write_serial, METH_VARARGS, "Write to UART serial"},
     {NULL, NULL, 0, NULL}
 };
 

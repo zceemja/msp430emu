@@ -1,4 +1,26 @@
 #include "py_functions.h"
+
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
+#include <time.h>
+#endif
+
+uint64_t getnano() {
+#ifdef _MSC_VER
+    static LARGE_INTEGER frequency;
+    if (frequency.QuadPart == 0) QueryPerformanceFrequency(&frequency);
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    double x = (double)now.QuadPart / (double)frequency.QuadPart;
+    return (uint64_t)(x * 1000000000.0);
+#else
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return now.tv_sec * 1000000000 + now.tv_nsec;
+#endif
+}
+
 // This is an ugly solution but heh
 Emulator *emuInst = NULL;
 
@@ -124,6 +146,63 @@ void stop_emu() {
     print_console(emuInst, "Stopping emulator..\n");
 }
 
+
+void write_serial(uint8_t *data, int len) {
+    if(emuInst == NULL) return;
+    Usci *usci = emuInst->cpu->usci;
+//    int i = 0;
+//    uint8_t *bytes = data;
+
+    printf("len is %d\n", len);
+    for(int i=0; i < len; i++) {
+        usleep(333);
+        printf("waiting.. ");
+        while (*usci->IFG2 & RXIFG) {
+            usleep(333);
+            if(emuInst->debugger->quit) {
+                puts("debugger stopped");
+                return;
+            }
+        }
+//        uint8_t thing = *(bytes);
+        *usci->UCA0RXBUF = data[i];
+        *usci->IFG2 |= RXIFG;
+        printf("0x%04X in UCA0RXBUF\n", (uint8_t)*usci->UCA0RXBUF);
+        printf("waiting.. ");
+        while (*usci->IFG2 & RXIFG) {
+            usleep(333);
+            if(emuInst->debugger->quit) {
+                puts("debugger stopped");
+                return;
+            }
+        }
+        puts("done\n");
+    }
+
+
+//    while (true) {
+//        usleep(333);
+//        while (*usci->IFG2 & RXIFG);
+//        uint8_t thing = *(bytes);
+//
+////        if (thing == '\n') {
+////          thing = '\r';
+////        }
+//        *usci->UCA0RXBUF = thing;
+//        *usci->IFG2 |= RXIFG;
+//
+//        //printf("\n0x%04X in UCA0RXBUF\n", (uint8_t)*usci->UCA0RXBUF);
+//        //puts("waiting..");
+//        while (*usci->IFG2 & RXIFG);
+//        //puts("done");
+//        //*usci->IFG2 |= RXIFG;
+//        if (*usci->UCA0RXBUF == '\r' || *usci->UCA0RXBUF == '\n') break;
+//        ++bytes;
+//      }
+//      return NULL;
+//    }
+}
+
 void start_emu(char *file) {
     emuInst = (Emulator *) calloc( 1, sizeof(Emulator) );
     Cpu *cpu = NULL; Debugger *deb = NULL;
@@ -158,9 +237,16 @@ void start_emu(char *file) {
         disassemble(emuInst, cpu->pc, 1);
         //    update_register_display(emuInst);
 
+        uint16_t counter = 0;
+        uint64_t time_delta = 0;
+        uint64_t time_last = getnano();
+
         while (!deb->quit) {
             // Handle debugger when CPU is not running
             if (!cpu->running) {
+                counter = 0;
+                time_delta = 0;
+                time_last = getnano();
                 usleep(10000);
                 continue;
             }
@@ -177,8 +263,27 @@ void start_emu(char *file) {
             handle_port_1(emuInst);
             handle_usci(emuInst);
 
-            // Average of 4 cycles per instruction
-            mclk_wait_cycles(emuInst, 4);
+            counter++;
+            if(counter > 500) {
+                uint64_t time_now = getnano();
+
+                // Average of 4 cycles per instruction (actually around 4.88)
+                uint64_t cycles_time = (uint64_t)(mclk_clock_nstime(emuInst) * 4.883 * 500);
+                uint64_t delta = time_now - time_last;
+                if(time_last > time_now) delta = 0;
+                uint64_t sleep_time = cycles_time - delta;
+                if(delta > cycles_time) {
+                    time_delta += (delta - cycles_time);
+                } else if(time_delta > sleep_time) {
+                    time_delta -= sleep_time;
+                } else {
+                    sleep_time += time_delta;
+                    time_delta = 0;
+                    usleep(sleep_time/1000);
+                }
+                time_last = time_now;
+                counter = 0;
+            }
         }
     }
 

@@ -201,3 +201,28 @@ uint16_t sr_to_value(Emulator *emu)
   
   return r2;
 }
+
+void cpu_step(Emulator *emu) {
+    Cpu *cpu = emu->cpu;
+    if(!cpu->sr.CPUOFF) {
+        // Instruction Decoder
+        decode(emu, fetch(emu), EXECUTE);
+        handle_bcm(emu);
+    }
+    // Handle Peripherals
+    handle_timer_a(emu);
+    handle_port_1(emu);
+    handle_usci(emu);
+    handle_interrupts(emu);
+
+}
+void cpu_reset(Emulator *emu) {
+    Cpu *cpu = emu->cpu;
+    cpu->pc = 0xC000;
+    cpu->sp = 0x400;
+    memset(&cpu->sr, 0, sizeof(Status_reg));
+    cpu->cg2 = cpu->r4  = cpu->r5  = cpu->r6  = cpu->r7 =
+    cpu->r8  =  cpu->r9 = cpu->r10 = cpu->r11 = cpu->r12 =
+    cpu->r13 = cpu->r14 = cpu->r15 = 0;
+    cpu->interrupt = NULL_VECTOR;
+}

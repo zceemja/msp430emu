@@ -43,8 +43,8 @@ void pause_emu() {
 
 void reset_emu() {
     if(emuInst == NULL) return;
-    emuInst->cpu->pc = 0xC000;
-    print_console(emuInst, "Resetting program counter to 0xC000\n");
+    cpu_reset(emuInst);
+    print_console(emuInst, "CPU Reset\n");
 }
 
 void set_reg(uint8_t reg_type, uint8_t value) {
@@ -74,6 +74,18 @@ PyObject *get_port1_regs() {
     regs[7] = *p->_REN;
     regs[8] = *p->_IN;
     return PyBytes_FromStringAndSize(regs, 9);
+}
+
+PyObject *get_cpu_regs() {
+    if(emuInst == NULL) return Py_None;
+    Cpu *cpu = emuInst->cpu;
+    uint16_t regs[] = {
+        cpu->pc, cpu->sp, sr_to_value(emuInst), cpu->cg2,
+        cpu->r4, cpu->r5, cpu->r6, cpu->r7,
+        cpu->r8, cpu->r9, cpu->r10, cpu->r11,
+        cpu->r12, cpu->r13, cpu->r14, cpu->r15
+    };
+    return PyBytes_FromStringAndSize((char *)regs, sizeof(regs));
 }
 
 PyObject *get_bcm_regs() {
@@ -258,16 +270,7 @@ void start_emu(char *file) {
 
             // Handle Breakpoints
             //handle_breakpoints(emuInst);
-            if(!cpu->sr.CPUOFF) {
-                // Instruction Decoder
-                decode(emuInst, fetch(emuInst), EXECUTE);
-                // Handle Peripherals
-                handle_bcm(emuInst);
-            }
-            handle_timer_a(emuInst);
-            handle_port_1(emuInst);
-            handle_usci(emuInst);
-            handle_interrupts(emuInst);
+            cpu_step(emuInst);
 
             counter++;
             if(counter > 500) {

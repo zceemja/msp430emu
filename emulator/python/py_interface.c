@@ -41,6 +41,8 @@ static PyObject *method_get_regs(PyObject *self, PyObject *args) {
         return get_timer_regs();
     case GET_REG_USCI:
         return get_usci_regs();
+    case GET_REG_CPU:
+        return get_cpu_regs();
     }
     return Py_None;
 }

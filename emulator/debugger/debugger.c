@@ -44,8 +44,7 @@ bool exec_cmd (Emulator *emu, char *line, int len)
   if ( !strncasecmp("reset", cmd, sizeof "reset") ||
        !strncasecmp("restart", cmd, sizeof "restart")) 
     {      
-      cpu->pc = 0xC000;
-
+      cpu_reset(emu);
       display_registers(emu);
       disassemble(emu, cpu->pc, 1);
     }
@@ -61,18 +60,11 @@ bool exec_cmd (Emulator *emu, char *line, int len)
 	steps = (int) op1;
       }
 
-      for (i = 0;i < steps;i++) {
-	decode(emu, fetch(emu), EXECUTE);
-
-        // Handle Peripherals     
-	handle_bcm(emu);
-	handle_timer_a(emu);
-	handle_port_1(emu);
-	handle_usci(emu); 
-      }
-
-      display_registers(emu);
-      disassemble(emu, cpu->pc, 1);
+    for (i = 0;i < steps;i++) {
+      cpu_step(emu);
+    }
+//      display_registers(emu);
+    disassemble(emu, cpu->pc, 1);
   }                                
   
   // Quit program //

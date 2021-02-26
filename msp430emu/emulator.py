@@ -16,32 +16,19 @@ class Emulator:
     EVENT_SERIAL = 1
     EVENT_GPIO = 2
 
-    P1_0_ON_PACKET = 0x00
-    P1_0_OFF_PACKET = 0x01
-    P1_1_ON_PACKET = 0x02
-    P1_1_OFF_PACKET = 0x03
-    P1_2_ON_PACKET = 0x04
-    P1_2_OFF_PACKET = 0x05
-    P1_3_ON_PACKET = 0x06
-    P1_3_OFF_PACKET = 0x07
-    P1_4_ON_PACKET = 0x08
-    P1_4_OFF_PACKET = 0x09
-    P1_5_ON_PACKET = 0x0A
-    P1_5_OFF_PACKET = 0x0B
-    P1_6_ON_PACKET = 0x0C
-    P1_6_OFF_PACKET = 0x0D
-    P1_7_ON_PACKET = 0x0E
-    P1_7_OFF_PACKET = 0x0F
-
     REG_NAMES_PORT1 = ['P1OUT', 'P1DIR', 'P1IFG', 'P1IES', 'P1IE', 'P1SEL', 'P1SEL2', 'P1REN', 'P1IN']
     REG_NAMES_BCM = ['DCOCTL', 'BCSCTL1', 'BCSCTL2', 'BCSCTL3', 'IE1', 'IFG1']
     REG_NAMES_TIMER_A = [
         'TA0CTL', 'TA0R', 'TA0CCTL0', 'TA0CCR0', 'TA0CCTL1', 'TA0CCR1', 'TA0CCTL2', 'TA0CCR2', 'TA0IV',
         'TA1CTL', 'TA1R', 'TA1CCTL0', 'TA1CCR0', 'TA1CCTL1', 'TA1CCR1', 'TA1CCTL2', 'TA1CCR2', 'TA1IV'
     ]
-    REG_NAMES_USCI = ['UCA0CTL0', 'UCA0CTL1', 'UCA0BR0', 'UCA0BR1', 'UCA0MCTL', 'UCA0STAT',
-                      'UCA0RXBUF', 'UCA0TXBUF', 'UCA0ABCTL', 'UCA0IRTCTL', 'UCA0IRRCTL', 'IFG2'
-                      ]
+    REG_NAMES_USCI = [
+        'UCA0CTL0', 'UCA0CTL1', 'UCA0BR0', 'UCA0BR1', 'UCA0MCTL', 'UCA0STAT',
+        'UCA0RXBUF', 'UCA0TXBUF', 'UCA0ABCTL', 'UCA0IRTCTL', 'UCA0IRRCTL', 'IFG2'
+    ]
+    REG_NAMES_CPU = [
+        'PC', 'SP', 'SR', 'CG2', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'
+    ]
 
     def __init__(self, load=None, callback=None):
         # self.process = Popen([path.join(emu_dir, 'MSP430'), str(ws_port)], stdout=PIPE, stderr=PIPE)
@@ -88,6 +75,10 @@ class Emulator:
     def get_bcm_regs(self):
         if self.started:
             return _msp430emu.get_regs(0x03)
+
+    def get_cpu_regs(self):
+        if self.started:
+            return _msp430emu.get_regs(0x04)
 
     def get_timer_a_regs(self):
         if self.started:
@@ -200,10 +191,11 @@ class EmulatorWindow(wx.Frame):
             "BCM Registers": (view_menu, 1, wx.NewId(), "Show/Hide Emulator BCM register table", self.ToggleRegisters),
             "TimerA Registers": (view_menu, 1, wx.NewId(), "Show/Hide Emulator TimerA register table", self.ToggleRegisters),
             "USCI Registers": (view_menu, 1, wx.NewId(), "Show/Hide Emulator USCI register table", self.ToggleRegisters),
+            "CPU Registers": (view_menu, 1, wx.NewId(), "Show/Hide Emulator CPU register table", self.ToggleRegisters),
             "Clear serial": (view_menu, 0, wx.NewId(), "Clean text in serial window", lambda e: self.serial.Clear()),
             "Clear console": (view_menu, 0, wx.NewId(), "Clean text in console window", lambda e: self.control.Clear()),
 
-            "Step\tCtrl+N": (debug_menu, 0, wx.NewId(), "Step single instruction", lambda e: self.emu.send_command("step")),
+            "Step\tCtrl+N": (debug_menu, 0, wx.NewId(), "Step single instruction", self.OnStep),
             "Registers": (debug_menu, 0, wx.NewId(), "Print registers in console", lambda e: self.emu.send_command("regs")),
         }
 
@@ -452,6 +444,10 @@ class EmulatorWindow(wx.Frame):
         self.emu.write_serial(text)
         self.serial_input.Clear()
 
+    def OnStep(self, e):
+        self.emu.send_command("step")
+        self.registers.update_values()
+
     def ToggleRegisters(self, e):
         if e.Id == self.menu_navigation["Port1 Registers"][2]:
             panel = self.registers.panel_port1
@@ -461,6 +457,8 @@ class EmulatorWindow(wx.Frame):
             panel = self.registers.panel_timer_a
         elif e.Id == self.menu_navigation["USCI Registers"][2]:
             panel = self.registers.panel_usci
+        elif e.Id == self.menu_navigation["CPU Registers"][2]:
+            panel = self.registers.panel_cpu
         else:
             return
         if e.Int == 0:
@@ -480,16 +478,19 @@ class RegisterPanel(wx.Panel):
         self.regs_bcm = {name: None for name in emu.REG_NAMES_BCM + ["MCLK"]}
         self.regs_timer_a = {name: None for name in emu.REG_NAMES_TIMER_A}
         self.regs_usci = {name: None for name in emu.REG_NAMES_USCI}
+        self.regs_cpu = {name: None for name in emu.REG_NAMES_CPU}
 
         self.grid_port1 = wx.FlexGridSizer(len(self.regs_port1), 2, 0, 10)
         self.grid_bmc = wx.FlexGridSizer(len(self.regs_bcm), 2, 0, 10)
         self.grid_timer_a = wx.FlexGridSizer(len(self.regs_timer_a), 2, 0, 10)
         self.grid_usci = wx.FlexGridSizer(len(self.regs_usci), 2, 0, 10)
+        self.grid_cpu = wx.FlexGridSizer(len(self.regs_cpu), 2, 0, 5)
 
         self.panel_port1 = wx.Panel(self)
         self.panel_bmc = wx.Panel(self)
         self.panel_timer_a = wx.Panel(self)
         self.panel_usci = wx.Panel(self)
+        self.panel_cpu = wx.Panel(self)
 
         # Stucture map of [panel, grid, regs, emu func]
         self.__struc = [
@@ -497,6 +498,7 @@ class RegisterPanel(wx.Panel):
             (self.panel_bmc, self.grid_bmc, self.regs_bcm, emu.get_bcm_regs),
             (self.panel_timer_a, self.grid_timer_a, self.regs_timer_a, emu.get_timer_a_regs),
             (self.panel_usci, self.grid_usci, self.regs_usci, emu.get_usci_regs),
+            (self.panel_cpu, self.grid_cpu, self.regs_cpu, emu.get_cpu_regs),
         ]
 
         for panel, grid, regs, _ in self.__struc:
@@ -515,6 +517,7 @@ class RegisterPanel(wx.Panel):
         vbox.Add(self.panel_bmc, proportion=1, flag=wx.ALL | wx.EXPAND)
         self.box.Add(vbox, proportion=1, flag=wx.ALL | wx.EXPAND, border=5)
         self.box.Add(self.panel_timer_a, proportion=1, flag=wx.ALL | wx.EXPAND, border=5)
+        self.box.Add(self.panel_cpu, proportion=1, flag=wx.ALL | wx.EXPAND, border=5)
         self.box.Add(self.panel_usci, proportion=1, flag=wx.ALL | wx.EXPAND, border=5)
         self.SetSizer(self.box)
         self.Center()
@@ -526,8 +529,8 @@ class RegisterPanel(wx.Panel):
         values = func()
         if values is None:
             return None
-        formatted = [f"{value:08b}" for value in values]
         if panel == self.panel_bmc:
+            formatted = [f"{value:08b}" for value in values]
             freq = "x"
             if values[0] == 96 and values[1] == 135:
                 freq = "1.03"
@@ -540,6 +543,10 @@ class RegisterPanel(wx.Panel):
             elif values[0] == 0b10010101 and values[1] == 0b10001111:
                 freq = "16.0"
             formatted.append(freq + " MHz")
+        elif panel == self.panel_cpu:
+            formatted = ["0x%0.4X" % int.from_bytes(values[i:i+2], sys.byteorder) for i in range(0, len(values), 2)]
+        else:
+            formatted = [f"{value:08b}" for value in values]
         return formatted
 
     def update_values(self):

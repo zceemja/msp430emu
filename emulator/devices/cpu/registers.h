@@ -135,4 +135,7 @@ void set_sr_value (Emulator *emu, uint16_t value);
 void initialize_msp_registers (Emulator *emu);
 void update_register_display (Emulator *emu);
 
+void cpu_step (Emulator *emu);
+void cpu_reset (Emulator *emu);
+
 #endif

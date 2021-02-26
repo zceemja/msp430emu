@@ -296,6 +296,7 @@ void handle_port_1 (Emulator *emu)
         p->IE_3 = true;
 
         if (*p->_IFG & 0x08) {
+            if(!p->IFG_3) service_interrupt(emu, PORT1_VECTOR);
             p->IFG_3 = true;
         }
         else {
@@ -304,6 +305,9 @@ void handle_port_1 (Emulator *emu)
     }
     else {
         p->IE_3 = false;
+    }
+    if (!p->DIR_3 & p->OUT_3 & p->REN_3) {
+
     }
 
     ///////////////////////////////////////////////////////////////
@@ -432,6 +436,30 @@ void handle_port_1 (Emulator *emu)
     else {
         p->IE_7 = false;
     }
+
+    // New P1IN value
+
+    // Natural pull-up configuration
+    uint8_t value = (~*p->_DIR) & *p->_REN & *p->_OUT;
+
+    // Pins raised due to external bias
+    value |= (p->EXT_EN & p->EXT_DIR);
+
+    // Pins lowered due to external bias
+    value &= ~(p->EXT_EN & ~(p->EXT_DIR));
+
+    if(*p->_IN != value) {
+//        printf("Changing PIN 0x%02X -> 0x%02X\n", *p->_IN, value);
+        // Compute with edge trigger
+        uint8_t ifg = *p->_IE & (((~*p->_IN) & value & (~*p->_IES)) | (*p->_IN & (~value) & *p->_IES));
+        *p->_IN = value;
+        if(ifg > 0 && ifg != *p->_IFG) {
+            //printf("Interrupt %02X^%02X %02X\n", ifg, *p->_IFG, (ifg ^ *p->_IFG));
+            *p->_IFG |= ifg;
+            service_interrupt(emu, PORT1_VECTOR);
+        }
+    }
+
 }
 
 void setup_port_1 (Emulator *emu)
@@ -459,6 +487,8 @@ void setup_port_1 (Emulator *emu)
     *(p->_SEL2 = (uint8_t *) get_addr_ptr(SEL2_VLOC)) = 0;
     *(p->_REN  = (uint8_t *) get_addr_ptr(REN_VLOC))  = 0;
 
+    p->EXT_EN = 0;
+    p->EXT_DIR = 0;
   
     p->DIR_0 = false; p->OUT_0 = false; p->IFG_0 = false; 
     p->IE_0 = false; p->SEL_0 = false; p->SEL2_0 = false;

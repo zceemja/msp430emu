@@ -42,6 +42,8 @@ void initialize_msp_registers(Emulator *emu)
   cpu->r4 = cpu->r5 = cpu->r6 = cpu->r7 = cpu->r8 = 
     cpu->r9 = cpu->r10 = cpu->r11 = cpu->r12 = cpu->r13 = 
     cpu->r14 = cpu->r15 = 0;
+
+  cpu->interrupt = NULL_VECTOR;
 }
 
 void update_register_display (Emulator *emu) 

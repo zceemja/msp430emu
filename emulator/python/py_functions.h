@@ -8,8 +8,8 @@
 #include <Python.h>
 
 
-#define SET_REG_P1_IN 0x05
-#define SET_REG_P2_IN 0x06
+#define SET_REG_P1_EN 0x05
+#define SET_REG_P1_DIR 0x06
 
 #define GET_REG_BCM 0x03
 //#define GET_REG_GP 0x04

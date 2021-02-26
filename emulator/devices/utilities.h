@@ -26,6 +26,7 @@
 
 #include "cpu/registers.h"
 #include "memory/memspace.h"
+#include "cpu/interrupts.h"
 
 void reg_num_to_name(uint8_t source_reg, char *reg_name);
 int16_t *get_reg_ptr(Emulator *emu, uint8_t reg);

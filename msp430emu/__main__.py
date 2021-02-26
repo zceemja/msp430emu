@@ -5,8 +5,5 @@ import os
 if __name__ == '__main__':
     load = None
     if len(sys.argv) >= 2:
-        if os.path.exists(sys.argv[1]):
-            load = sys.argv[1]
-        else:
-            print(f"File '{sys.argv[1]}' does not exist")
+        load = sys.argv[1]
     emulator.run(load)

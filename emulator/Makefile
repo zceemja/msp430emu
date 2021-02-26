@@ -8,17 +8,17 @@ all: MSP430 SERVER _msp430emu.so
 
 MSP430 : main.o utilities.o emu_server.o registers.o memspace.o debugger.o disassembler.o \
 	register_display.o decoder.o flag_handler.o formatI.o formatII.o formatIII.o \
-	usci.o port1.o packet_queue.o bcm.o timer_a.o
-	g++ -o MSP430 launcher.o emu_server.o utilities.o registers.o memspace.o debugger.o disassembler.o \
+	usci.o port1.o packet_queue.o bcm.o timer_a.o interrupts.o
+	g++ -o MSP430 launcher.o emu_server.o utilities.o registers.o memspace.o debugger.o disassembler.o interrupts.o \
 	register_display.o decoder.o flag_handler.o formatI.o formatII.o formatIII.o usci.o port1.o bcm.o timer_a.o packet_queue.o \
 	-lreadline -lwebsockets -lpthread -lrt -lssl -lcrypto;
 
 _msp430emu.so: py_functions.o py_interface.o utilities.o registers.o memspace.o debugger.o disassembler.o \
 	register_display.o decoder.o flag_handler.o formatI.o formatII.o formatIII.o \
-	usci.o port1.o bcm.o timer_a.o
+	usci.o port1.o bcm.o timer_a.o interrupts.o
 	$(CC) $(LLFLAGS) py_functions.o py_interface.o utilities.o registers.o memspace.o debugger.o disassembler.o \
 	register_display.o decoder.o flag_handler.o formatI.o formatII.o formatIII.o usci.o port1.o bcm.o timer_a.o \
-	-o _msp430emu.so -shared
+	interrupts.o -o _msp430emu.so -shared
 
 
 main.o : main.c
@@ -62,6 +62,9 @@ formatII.o : devices/cpu/formatII.c
 
 formatIII.o : devices/cpu/formatIII.c
 	$(CC) $(CCFLAGS) -c devices/cpu/formatIII.c
+
+interrupts.o : devices/cpu/interrupts.c
+	$(CC) $(CCFLAGS) -c devices/cpu/interrupts.c
 
 bcm.o : devices/peripherals/bcm.c
 	$(CC) $(CCFLAGS) -c devices/peripherals/bcm.c

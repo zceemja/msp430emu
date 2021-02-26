@@ -14,6 +14,7 @@ emulator_files = [
     'emulator/devices/cpu/formatI.c',
     'emulator/devices/cpu/formatII.c',
     'emulator/devices/cpu/formatIII.c',
+    'emulator/devices/cpu/interrupts.c',
     'emulator/devices/peripherals/bcm.c',
     'emulator/devices/peripherals/timer_a.c',
     'emulator/devices/peripherals/usci.c',

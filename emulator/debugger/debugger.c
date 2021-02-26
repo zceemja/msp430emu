@@ -96,21 +96,18 @@ bool exec_cmd (Emulator *emu, char *line, int len)
   // Display disassembly of N at HEX_ADDR: dis [N] [HEX_ADDR] //
   else if ( !strncasecmp("disas", cmd, sizeof "disas") ||
 	    !strncasecmp("dis", cmd, sizeof "dis") ||
-	    !strncasecmp("disassemble", cmd, sizeof "disassemble")) 
-    {
+	    !strncasecmp("disassemble", cmd, sizeof "disassemble")) {
       uint16_t start_addr = cpu->pc;
       uint32_t num = 10; 
       
       ops = sscanf(line, "%s %u %X", bogus1, &bogus2, &bogus3);
       
       if (ops == 2) {
-	sscanf(line, "%s %u", bogus1, &num);
+	    sscanf(line, "%s %u", bogus1, &num);
       }
       else if (ops == 3) {
-	sscanf(line, "%s %u %X", bogus1, &num, 
-		     (unsigned int *)&start_addr);
+	    sscanf(line, "%s %u %X", bogus1, &num, (unsigned int *)&start_addr);
       }
-      
       disassemble(emu, start_addr, num);
     }
 
@@ -124,7 +121,7 @@ bool exec_cmd (Emulator *emu, char *line, int len)
       
       // Is it a direct address or an adress in a register being spec'd 
       if (str[0] >= '0' && str[0] <= '9') {
-	sscanf(str, "%X", (unsigned int *) &start_addr);
+	    sscanf(str, "%X", (unsigned int *) &start_addr);
       }
       else if (str[0] == '%' || str[0] == 'r' || str[0] == 'R')
       {

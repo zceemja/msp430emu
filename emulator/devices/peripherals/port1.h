@@ -36,6 +36,10 @@ struct Port_1 {
   uint8_t *_SEL2; /* r/w     PUC reset */
   uint8_t *_REN;  /* r/w     PUC reset */
 
+  uint8_t EXT_EN; // External applied, high Z if false
+  uint8_t EXT_DIR; // External direction
+  float EXT_VOLT[8]; // External voltage
+
   // Peripherals activation flags (for emulator)
   bool DIR_0, OUT_0, IFG_0, IE_0, SEL_0, SEL2_0, REN_0;
   bool DIR_1, OUT_1, IFG_1, IE_1, SEL_1, SEL2_1, REN_1;

@@ -127,6 +127,7 @@ typedef struct Cpu {
   Usci *usci;
   Bcm *bcm;
   Timer_a *timer_a;
+  uint16_t interrupt;
 } Cpu;
 
 uint16_t sr_to_value (Emulator *emu);

@@ -49,9 +49,14 @@ void reset_emu() {
 
 void set_reg(uint8_t reg_type, uint8_t value) {
     if(emuInst == NULL) return;
+    Port_1 *p = emuInst->cpu->p1;
     switch(reg_type) {
-    case SET_REG_P1_IN:
-        *emuInst->cpu->p1->_IN = value;
+    case SET_REG_P1_EN:
+    p->EXT_EN = value;
+    break;
+    case SET_REG_P1_DIR:
+    p->EXT_DIR = value;
+    break;
     }
 }
 
@@ -229,7 +234,7 @@ void start_emu(char *file) {
     setup_port_1(emuInst);
     setup_usci(emuInst);
 
-    print_console(emuInst, " [MSP430 Emulator]\n Copyright (C) 2020 Rudolf Geosits (rgeosits@live.esu.edu)\n");
+    print_console(emuInst, "[MSP430 Emulator]\n Copyright (C) 2020 Rudolf Geosits (rgeosits@live.esu.edu)\n");
 
     load_bootloader(0x0C00);
     if(load_firmware(emuInst, file, 0xC000) == 0) {
@@ -253,15 +258,16 @@ void start_emu(char *file) {
 
             // Handle Breakpoints
             //handle_breakpoints(emuInst);
-
-            // Instruction Decoder
-            decode(emuInst, fetch(emuInst), EXECUTE);
-
-            // Handle Peripherals
-            handle_bcm(emuInst);
+            if(!cpu->sr.CPUOFF) {
+                // Instruction Decoder
+                decode(emuInst, fetch(emuInst), EXECUTE);
+                // Handle Peripherals
+                handle_bcm(emuInst);
+            }
             handle_timer_a(emuInst);
             handle_port_1(emuInst);
             handle_usci(emuInst);
+            handle_interrupts(emuInst);
 
             counter++;
             if(counter > 500) {

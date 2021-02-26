@@ -307,11 +307,11 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
       uint16_t *stack_address = get_stack_ptr(emu);
     
       if (bw_flag == EMU_WORD) {
-	*stack_address = source_value;
+        *stack_address = source_value;
       }
       else if (bw_flag == EMU_BYTE) {
-	*stack_address &= 0xFF00; /* Zero out bottom half for pushed byte */
-	*stack_address |= (uint8_t) source_value;
+        *stack_address &= 0xFF00; /* Zero out bottom half for pushed byte */
+        *stack_address |= (uint8_t) source_value;
       }
 
       break;
@@ -335,7 +335,11 @@ void decode_formatII(Emulator *emu, uint16_t instruction, bool disassemble)
   
       //# RETI Return from interrupt: Pop SR then pop PC
     case 0x6:{
-       
+      set_sr_value(emu, *get_stack_ptr(emu));
+      cpu->sp += 2;
+      cpu->pc = *get_stack_ptr(emu);
+      cpu->sp += 2;
+//      printf("RETI 0x%04X 0x%04X\n", cpu->pc, sr_to_value(emu));
       break;
     }
     default:{

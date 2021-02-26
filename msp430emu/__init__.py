@@ -1,2 +1,2 @@
 from .emulator import run
-from .version import *
+from .version import __version__

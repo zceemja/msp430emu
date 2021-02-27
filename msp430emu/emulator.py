@@ -472,7 +472,10 @@ class EmulatorWindow(wx.Frame):
 class RegisterPanel(wx.Panel):
     def __init__(self, parent, emu: Emulator):
         wx.Panel.__init__(self, parent)
-        self.font = wx.Font(wx.FontInfo(11).Family(wx.FONTFAMILY_TELETYPE))
+        if "win" in sys.platform:
+            self.font = wx.Font(wx.FontInfo(10).Family(wx.FONTFAMILY_TELETYPE).Bold(True))
+        else:
+            self.font = wx.Font(wx.FontInfo(11).Family(wx.FONTFAMILY_TELETYPE))
         self.box = wx.BoxSizer(wx.HORIZONTAL)
         self.emu = emu
         self.regs_port1 = {name: None for name in emu.REG_NAMES_PORT1}

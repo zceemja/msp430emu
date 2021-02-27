@@ -472,6 +472,7 @@ class EmulatorWindow(wx.Frame):
 class RegisterPanel(wx.Panel):
     def __init__(self, parent, emu: Emulator):
         wx.Panel.__init__(self, parent)
+        self.font = wx.Font(wx.FontInfo(11).Family(wx.FONTFAMILY_TELETYPE))
         self.box = wx.BoxSizer(wx.HORIZONTAL)
         self.emu = emu
         self.regs_port1 = {name: None for name in emu.REG_NAMES_PORT1}
@@ -505,7 +506,8 @@ class RegisterPanel(wx.Panel):
             gridvals = []
             for name in regs.keys():
                 text = wx.TextCtrl(panel, style=wx.TE_READONLY | wx.TE_NO_VSCROLL)
-                text.SetMinSize((80, 15))
+                text.SetMinSize((90, 15))
+                text.SetFont(self.font)
                 gridvals.append((wx.StaticText(panel, label=name),))
                 gridvals.append((text, 1, wx.EXPAND))
                 regs[name] = text

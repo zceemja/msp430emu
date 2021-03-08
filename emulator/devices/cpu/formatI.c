@@ -670,7 +670,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
       case 0xC:{
         if (bw_flag == EMU_WORD) {
           // If calling __bic_SR_register_on_exit
-          if (destination_offset == 0x0023 || destination_offset == 0x0000) {
+          if (destination == 0x02 && ad_flag == 0) {
             uint16_t sr = sr_to_value(emu);
             set_sr_value(emu, sr & ~source_value);
           } else {
@@ -679,7 +679,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
         }
         else if (bw_flag == EMU_BYTE) {
           // If calling __bic_SR_register_on_exit
-          if (destination_offset == 0x0023 || destination_offset == 0x0000) {
+          if (destination == 0x02 && ad_flag == 0) {
             uint16_t sr = sr_to_value(emu);
             set_sr_value(emu, sr & (~source_value | 0xFF00));
           } else {
@@ -694,7 +694,7 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
        */
       case 0xD:{
         // If calling __bis_SR_register
-        if (destination_offset == 0x0023 || destination_offset == 0x0000) {
+        if (destination == 0x02 && ad_flag == 0) {
             uint16_t sr = sr_to_value(emu);
             set_sr_value(emu, sr | source_value);
         }

@@ -21,29 +21,8 @@
 //##########+++ MSP430 Register initialization +++##########
 void initialize_msp_registers(Emulator *emu)
 {
-  Cpu *cpu = emu->cpu;
-  Debugger *debugger = emu->debugger;
-
-  /* Initialize PC to boot loader code on cold boot (COLD)*/
-  //cpu->pc = 0x0C00;
-
-  /* Initialize Program Counter to *0xFFFE at boot or reset (WARM)*/
-  cpu->pc = 0xC000;
-  
-  /* Stack pointer typically begins at the top of RAM after reset */
-  cpu->sp = 0x400;
-
-  /* Initialize the status register */
-  memset(&cpu->sr, 0, sizeof(Status_reg));
-
-  cpu->running = false;
-  cpu->cg2 = 0;
-
-  cpu->r4 = cpu->r5 = cpu->r6 = cpu->r7 = cpu->r8 = 
-    cpu->r9 = cpu->r10 = cpu->r11 = cpu->r12 = cpu->r13 = 
-    cpu->r14 = cpu->r15 = 0;
-
-  cpu->interrupt = NULL_VECTOR;
+  cpu_reset(emu);
+  emu->cpu->running = false;
 }
 
 void update_register_display (Emulator *emu) 
@@ -214,12 +193,14 @@ void cpu_step(Emulator *emu) {
     handle_port_1(emu);
     handle_usci(emu);
     handle_interrupts(emu);
-
+    cpu->nsecs += cpu->bcm->mclk_period;
 }
 void cpu_reset(Emulator *emu) {
     Cpu *cpu = emu->cpu;
     cpu->pc = 0xC000;
     cpu->sp = 0x400;
+    cpu->nsecs = 0;
+
     memset(&cpu->sr, 0, sizeof(Status_reg));
     cpu->cg2 = cpu->r4  = cpu->r5  = cpu->r6  = cpu->r7 =
     cpu->r8  =  cpu->r9 = cpu->r10 = cpu->r11 = cpu->r12 =

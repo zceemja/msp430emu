@@ -24,7 +24,7 @@ List of features that are added:
 - [x] Python GUI
 - [x] Blinking LEDs
 - [x] UART Serial output
-- [ ] UART Serial input
+- [x] UART Serial input
 - [x] Reset button
 - [x] Button for P1.3
 - [x] Interrupts
@@ -35,5 +35,5 @@ List of features that are added:
 - [ ] GPIO Oscilloscope
 - [ ] Port 2 GPIO
 - [ ] Invalid register configuration checks
-- [ ] Information about UART Band
+- [x] Information about UART Band
 - [ ] ADC

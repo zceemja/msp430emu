@@ -32,6 +32,7 @@ PyObject *get_port1_regs();
 PyObject *get_bcm_regs();
 PyObject *get_timer_regs();
 PyObject *get_usci_regs();
+PyObject *get_misc_data();
 void write_serial(uint8_t *data, int len);
 
 #endif

@@ -60,6 +60,28 @@ void set_reg(uint8_t reg_type, uint8_t value) {
     }
 }
 
+PyObject *get_misc_data() {
+    if(emuInst == NULL) return Py_None;
+    Cpu *cpu = emuInst->cpu;
+    Bcm *bcm = cpu->bcm;
+    PyObject *dict = PyDict_New();
+    PyDict_SetItemString(dict, "period", PyLong_FromUnsignedLongLong(cpu->nsecs));
+    PyDict_SetItemString(dict, "mclk", PyLong_FromUnsignedLongLong(bcm->mclk_freq));
+
+    PyObject *mck_src_str;
+    switch(bcm->mclk_source) {
+        case DCOCLK: {mck_src_str = PyUnicode_FromString("DCOCLK"); break;}
+        case XT2CLK: {mck_src_str = PyUnicode_FromString("XT2CLK"); break;}
+        case VLOCLK: {mck_src_str = PyUnicode_FromString("VLOCLK"); break;}
+        default: {mck_src_str = PyUnicode_FromString("?"); break;}
+//         TACLK, ACLK, SMCLK, MCLK, INCLK, NUM_CLOCKS
+    }
+    PyDict_SetItemString(dict, "mclk_src", mck_src_str);
+    PyDict_SetItemString(dict, "uart_baud", PyLong_FromUnsignedLong(cpu->usci->UART_baud));
+
+    return dict;
+}
+
 PyObject *get_port1_regs() {
     if(emuInst == NULL) return Py_None;
     char regs[9];
@@ -166,35 +188,38 @@ void stop_emu() {
 
 void write_serial(uint8_t *data, int len) {
     if(emuInst == NULL) return;
-    Usci *usci = emuInst->cpu->usci;
-//    int i = 0;
-//    uint8_t *bytes = data;
-
-    printf("len is %d\n", len);
-    for(int i=0; i < len; i++) {
-        usleep(333);
-        printf("waiting.. ");
-        while (*usci->IFG2 & RXIFG) {
-            usleep(333);
-            if(emuInst->debugger->quit) {
-                puts("debugger stopped");
-                return;
-            }
-        }
-//        uint8_t thing = *(bytes);
-        *usci->UCA0RXBUF = data[i];
-        *usci->IFG2 |= RXIFG;
-        printf("0x%04X in UCA0RXBUF\n", (uint8_t)*usci->UCA0RXBUF);
-        printf("waiting.. ");
-        while (*usci->IFG2 & RXIFG) {
-            usleep(333);
-            if(emuInst->debugger->quit) {
-                puts("debugger stopped");
-                return;
-            }
-        }
-        puts("done\n");
-    }
+    set_uart_buf(emuInst, data, len);
+////    int i = 0;
+////    uint8_t *bytes = data;
+//    *usci->UCA0RXBUF = data[0];
+//    *usci->IFG2 |= RXIFG;
+//    puts("Setting interrupt");
+//    service_interrupt(emuInst, USCIAB0RX_VECTOR);
+//    printf("len is %d\n", len);
+//    for(int i=0; i < len; i++) {
+//        usleep(333);
+//        printf("waiting.. ");
+//        while (*usci->IFG2 & RXIFG) {
+//            usleep(333);
+//            if(emuInst->debugger->quit) {
+//                puts("debugger stopped");
+//                return;
+//            }
+//        }
+////        uint8_t thing = *(bytes);
+//        *usci->UCA0RXBUF = data[i];
+//        *usci->IFG2 |= RXIFG;
+//        printf("0x%04X in UCA0RXBUF\n", (uint8_t)*usci->UCA0RXBUF);
+//        printf("waiting.. ");
+//        while (*usci->IFG2 & RXIFG) {
+//            usleep(333);
+//            if(emuInst->debugger->quit) {
+//                puts("debugger stopped");
+//                return;
+//            }
+//        }
+//        puts("done\n");
+//    }
 
 
 //    while (true) {
@@ -216,8 +241,6 @@ void write_serial(uint8_t *data, int len) {
 //        if (*usci->UCA0RXBUF == '\r' || *usci->UCA0RXBUF == '\n') break;
 //        ++bytes;
 //      }
-//      return NULL;
-//    }
 }
 
 void start_emu(char *file) {
@@ -275,9 +298,10 @@ void start_emu(char *file) {
             counter++;
             if(counter > 500) {
                 uint64_t time_now = getnano();
+                if(cpu->bcm->mclk_period == 0) break;
 
-                // Average of 4 cycles per instruction (actually around 4.88)
-                uint64_t cycles_time = (uint64_t)(mclk_clock_nstime(emuInst) * 4.883 * 500);
+                // Average of 4 cycles per instruction
+                uint64_t cycles_time = (uint64_t)(cpu->bcm->mclk_period * 4.883 * 500);
                 uint64_t delta = time_now - time_last;
                 if(time_last > time_now) delta = 0;
                 uint64_t sleep_time = cycles_time - delta;
@@ -297,6 +321,7 @@ void start_emu(char *file) {
     }
 
     uninitialize_msp_memspace();
+    free(cpu->usci->UART_buf_data);
     free(cpu->timer_a);
     free(cpu->bcm);
     free(cpu->p1);

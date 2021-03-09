@@ -29,6 +29,9 @@
 #define TXIFG 0x02
 #define RXIFG 0x01
 
+#define UCA0TXIE 0x02
+#define UCA0RXIE 0x01
+
 // USCI_Ax Control Register 0
 typedef struct Ctl0 
 {
@@ -90,12 +93,21 @@ typedef struct Usci
   uint8_t *UCA0IRTCTL;
   uint8_t *UCA0IRRCTL;
 
+  uint8_t *IE2;
   uint8_t *IFG2;
-  
+
   Ctl0 ctl0;
   Ctl1 ctl1;
+
+  uint8_t *UART_buf_data;
+  int UART_buf_len;
+  int UART_buf_pnt;
+  uint64_t UART_buf_sent;
+  uint32_t UART_baud;
+  bool USCI_RESET;
 }
 Usci;
 
 void setup_usci(Emulator *emu);
 void handle_usci(Emulator *emu);
+void set_uart_buf(Emulator *emu, uint8_t *buf, int len);

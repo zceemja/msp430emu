@@ -36,12 +36,17 @@ void handle_bcm (Emulator *emu)
   if (SELMx == 0b00 || SELMx == 0b01) { // source = DCOCLK
     bcm->mclk_source = DCOCLK;
     bcm->mclk_freq = (bcm->dco_freq*1.0) / bcm->mclk_div;
+    bcm->mclk_period = (1.0/(bcm->mclk_freq))*1000000000.0;
   }
   else if (SELMx == 0b10) { // XT2CLK
-    bcm->mclk_source = XT2CLK;    
+    bcm->mclk_source = XT2CLK;
+    bcm->mclk_freq = 0;
+    bcm->mclk_period = 0;
   }
   else if (SELMx == 0b11) { // VLOCLK
-    bcm->mclk_source = VLOCLK;    
+    bcm->mclk_source = VLOCLK;
+    bcm->mclk_freq = 12000 / bcm->mclk_div;
+    bcm->mclk_period = (1.0/(bcm->mclk_freq))*1000000000.0;
   }
 
   switch (DIVMx) {
@@ -174,11 +179,7 @@ double mclk_clock_nstime(Emulator *emu) {
     Bcm *bcm = cpu->bcm;
     double nsec;
 
-    if (bcm->mclk_source == DCOCLK) {
-        nsec = (1.0/(bcm->dco_freq/bcm->mclk_div))*1000000000.0;
-    } else {
-        nsec = (1.0/1030000) * 1000000000.0;
-    }
+    nsec = (1.0/(bcm->mclk_freq))*1000000000.0;
     return nsec;
 }
 

@@ -128,6 +128,7 @@ typedef struct Cpu {
   Bcm *bcm;
   Timer_a *timer_a;
   uint16_t interrupt;
+  uint64_t nsecs;  // nanoseconds since emulator started;
 } Cpu;
 
 uint16_t sr_to_value (Emulator *emu);

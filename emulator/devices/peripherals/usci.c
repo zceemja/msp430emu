@@ -98,43 +98,90 @@ void open_pty (Emulator *emu)
 }
 */
 
+const uint32_t VALID_BAUD[] = {
+    1200, 2400, 4800, 9600, 19200, 38400, 56000, 115200, 128000, 256000
+};
+
+void set_uart_buf(Emulator *emu, uint8_t *buf, int len) {
+  Usci *usci = emu->cpu->usci;
+  free(usci->UART_buf_data);
+  usci->UART_buf_data = malloc(len);
+  memcpy(usci->UART_buf_data, buf, len);
+  usci->UART_buf_pnt = 0;
+  usci->UART_buf_len = len;
+}
+
 void handle_usci (Emulator *emu) {
   Cpu *cpu = emu->cpu;
   Debugger *deb = emu->debugger;
   Usci *usci = cpu->usci;
   Port_1 *p1 = cpu->p1;
-  
-  static bool uart_active = false;
-  
-  // Handle sending from TX pin (P1.2) 
-  if (p1->SEL_2 && p1->SEL2_2) {
-    if (uart_active == false) {
-      puts("UART TX pin activated on P1.2");
-      uart_active = true;
+
+  if (!usci->USCI_RESET && (*usci->UCA0CTL1 & 0x01)) {
+    usci->USCI_RESET = true;
+  }
+  else if (usci->USCI_RESET && !(*usci->UCA0CTL1 & 0x01)) {
+    uint64_t clock = 0;
+    usci->UART_baud = 0;
+    usci->USCI_RESET = false;
+    if((*usci->UCA0CTL1 & 0xc0) == 0x40) { // USCI clock source is ACLK
+        clock = 32768;
+    } else if ((*usci->UCA0CTL1 & 0x80) == 0x80) { // SMCLK
+        clock = cpu->bcm->mclk_freq;
     }
-
-    // UCAxTXIFG
-    if (*usci->IFG2 & TXIFG) {
-      uint8_t c = *usci->UCA0TXBUF;
-      unsigned char str[2];
-      str[0] = c;
-      str[1] = 0;
-
-      *usci->IFG2 &= ~TXIFG;
-
-      if (c & 0xFF) {
-        if (deb->web_interface) {
-            print_serial(emu, (char*)&str[0]);
-            //write(sp, usci->UCA0TXBUF, 1);
+    if(clock > 0) {
+        double baud = clock / *usci->UCA0BR0;
+        for(int i=0;i < sizeof(VALID_BAUD); i++) {
+            double diff = ((double)VALID_BAUD[i])/baud;
+            if(diff < 1.1 && diff > 0.9) {  // If error less than +/- 10%
+                usci->UART_baud = VALID_BAUD[i];
+                char message[35] = {0};
+                sprintf(message, "Detected UART Baud Rate: %d\n", usci->UART_baud);
+                print_console(emu, message);
+                break;
+            }
         }
-        //else if (deb->console_interface) {
-            //write(sp, usci->UCA0TXBUF, 1);
-        //}
-	    *usci->UCA0TXBUF = 0;
-      }
+    }
+    if(usci->UART_baud == 0) {
+        print_console(emu, "Invalid UART Baud Rate\n");
+    }
+  }
+  if(usci->UART_baud > 0) {
 
-      //*usci->IFG2 &= TXIFG;
-      *usci->IFG2 |= TXIFG;
+    // Handle signal from RX pin (P1.1)
+    if (p1->SEL_1 && p1->SEL2_1) {
+      if((usci->UART_buf_pnt < usci->UART_buf_len) && !(*usci->IFG2 & RXIFG)) {
+        uint64_t symbol_period = 1000000000/usci->UART_baud;
+        if(cpu->nsecs >= (usci->UART_buf_sent + symbol_period)) {
+          *usci->UCA0RXBUF = usci->UART_buf_data[usci->UART_buf_pnt];
+          *usci->IFG2 |= RXIFG;
+          usci->UART_buf_pnt++;
+          usci->UART_buf_sent = cpu->nsecs; // Last time symbol was sent;
+          if(*usci->IE2 & UCA0RXIE) {
+            service_interrupt(emu, USCIAB0RX_VECTOR);
+          }
+        }
+      }
+    }
+    // Handle sending from TX pin (P1.2)
+    if (p1->SEL_2 && p1->SEL2_2) {
+      // UCAxTXIFG
+      if (*usci->IFG2 & TXIFG) {
+        uint8_t c = *usci->UCA0TXBUF;
+        unsigned char str[2];
+        str[0] = c;
+        str[1] = 0;
+
+        *usci->IFG2 &= ~TXIFG;
+
+        if (c & 0xFF) {
+          if (deb->web_interface) {
+              print_serial(emu, (char*)&str[0]);
+          }
+  	    *usci->UCA0TXBUF = 0;
+        }
+        *usci->IFG2 |= TXIFG;
+      }
     }
   }
   return;
@@ -156,8 +203,9 @@ void setup_usci (Emulator *emu)
   static const uint16_t UCA0ABCTL_VLOC = 0x5D; // Auto-Baud control register
   static const uint16_t UCA0IRTCTL_VLOC = 0x5E; // IrDA transmit control reg
   static const uint16_t UCA0IRRCTL_VLOC = 0x5F; // IrDA Receive control reg
-  static const uint16_t IFG2_VLOC       = 0x03; // Interrupt flag register 2
-  
+  static const uint16_t IE2_VLOC        = 0x01; // SFR interrupt enable register 2
+  static const uint16_t IFG2_VLOC       = 0x03; // SFR interrupt flag register 2
+
   // Set initial values
   *(usci->UCA0CTL0   = (uint8_t *) get_addr_ptr(UCA0CTL0_VLOC))  = 0;
   *(usci->UCA0CTL1  = (uint8_t *) get_addr_ptr(UCA0CTL1_VLOC))   = 0x01;
@@ -171,7 +219,15 @@ void setup_usci (Emulator *emu)
   *(usci->UCA0IRTCTL  = (uint8_t *) get_addr_ptr(UCA0IRTCTL_VLOC)) = 0;
   *(usci->UCA0IRRCTL  = (uint8_t *) get_addr_ptr(UCA0IRRCTL_VLOC)) = 0;  
 
+  usci->IE2  = (uint8_t *) get_addr_ptr(IE2_VLOC);
   usci->IFG2  = (uint8_t *) get_addr_ptr(IFG2_VLOC);
   *usci->IFG2 |= TXIFG;
   *usci->IFG2 &= ~RXIFG;
+
+  usci->UART_buf_data = NULL;
+  usci->UART_buf_len = 0;
+  usci->UART_buf_pnt = 0;
+  usci->UART_buf_sent = 0;
+  usci->UART_baud = 0;
+  usci->USCI_RESET = false;
 }

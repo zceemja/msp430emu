@@ -415,6 +415,13 @@ void decode_formatI(Emulator *emu, uint16_t instruction, bool disassemble)
   
 
   if (!disassemble) {
+
+    // USCI reset interrupt flag when UCA0RXBUF is read
+    if(as_flag == 1 && source == 2) {
+      // FIXME: might not catch all cases
+      if(source_offset == 0x0066) *cpu->usci->IFG2 &= ~RXIFG;
+    }
+
     switch (opcode) {
       
       /* MOV SOURCE, DESTINATION

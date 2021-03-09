@@ -7,6 +7,7 @@ from . import version
 import wx
 from wx.adv import RichToolTip
 import time
+import re
 
 source_dir = path.dirname(path.realpath(__file__))
 
@@ -46,7 +47,6 @@ class Emulator:
             self.load_file(self.load)
 
     def _on_serial(self, s):
-        print("received " + s)
         self._cb(self.EVENT_SERIAL, s)
 
     def _on_console(self, s):
@@ -60,13 +60,16 @@ class Emulator:
         if self.started:
             _msp430emu.cmd(cmd)
 
+    def get_misc_info(self):
+        if self.started:
+            return _msp430emu.get_misc()
+
     def write_serial(self, value):
-        try:
-            # self._serial_queue.put_nowait(value)
-            cmd_val = value.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
-            self._cb(self.EVENT_CONSOLE, f"[UART TX] {cmd_val}\n")
-        except queue.Full:
-            self._cb(self.EVENT_CONSOLE, "UART TX queue is full, this value will not be sent\n")
+        formatted = value.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
+        for match in re.findall(r'(\\x[0-9a-f]{1,2})', formatted, re.IGNORECASE):
+            formatted = formatted.replace(match, chr(int(match[-2:], 16)))
+        _msp430emu.write_serial(formatted)
+        self._cb(self.EVENT_CONSOLE, f"[UART TX] {value}\n")
 
     def get_port1_regs(self):
         if self.started:
@@ -107,16 +110,6 @@ class Emulator:
         self.started = False
         print("stopping emulator...")
 
-    def _serial_writer(self):
-        pass
-        # while self.started:
-        #     message = self._serial_queue.get()
-        #     if message is None:
-        #         break
-        #     _msp430emu.write_serial(message)
-        #     self._serial_queue.task_done()
-        # print("stopping writer...")
-
     def load_file(self, fname):
         self.close()
         if not path.exists(fname):
@@ -124,11 +117,8 @@ class Emulator:
             return
         print("loading " + fname)
         self.load = fname
-        # self._serial_queue = queue.Queue(maxsize=2)
         self._process = Thread(target=self._start_emu, daemon=False)
-        # self._writer = Thread(target=self._serial_writer, daemon=False)
         self._process.start()
-        # self._writer.start()
 
     def _cb(self, ev, data):
         if callable(self.callback):
@@ -152,9 +142,6 @@ class Emulator:
                 _msp430emu.stop()
             except SystemError:
                 print("Failed gradually stop emulator")
-            # if self._serial_queue.empty():
-            #     self._serial_queue.put_nowait(None)
-            # self._writer.join(1)
             self._process.join(1)
 
 
@@ -197,6 +184,7 @@ class EmulatorWindow(wx.Frame):
 
             "Step\tCtrl+N": (debug_menu, 0, wx.NewId(), "Step single instruction", self.OnStep),
             "Registers": (debug_menu, 0, wx.NewId(), "Print registers in console", lambda e: self.emu.send_command("regs")),
+            "Misc": (debug_menu, 0, wx.NewId(), "", lambda e: print(self.emu.get_misc_info())),
         }
 
         for name, (menu, typ, wx_id, desc, action) in self.menu_navigation.items():
@@ -378,7 +366,7 @@ class EmulatorWindow(wx.Frame):
         self.diagram.Refresh()
         self.emu.get_port1_regs()
         self.btn_key.Disable()
-        self.btn_send_serial.Disable()
+        # self.btn_send_serial.Disable()
         self.emu_paused = True
 
     def OnStart(self, e):

@@ -98,6 +98,38 @@ void handle_timer_a (Emulator *emu)
             if(CCIE) service_interrupt(emu, TIMER0_A0_VECTOR);
         }
         timer->timer_0_freq = (freq * 1.0) / cmp;
+        switch (OUTMOD1) {
+            case 0b000: {  // 0: Output
+              timer->timer_0_duty = 0;
+              break;
+            }
+            case 0b001: {  // 1: Set
+              timer->timer_0_duty = (timer->timer_0_duty == 0.0 && value < cmp) ? 0.0 : 1.0;
+              break;
+            }
+            case 0b010:    // 2: Toggle/Reset
+            case 0b011: {  // 3: Set/Reset
+              if(timer->mode_0 == UP_MODE)
+                timer->timer_0_duty = 1.0 - *timer->TA0CCR1 / (double)cmp;
+              else timer->timer_0_duty = 1.0 - abs(*timer->TA0CCR0 - *timer->TA0CCR1) / (double)cmp;
+              break;
+            }
+            case 0b100: {  // 4: Toggle
+              timer->timer_0_duty = 0.5;
+              break;
+            }
+            case 0b101: {  // 5: Reset
+              timer->timer_0_duty = (timer->timer_0_duty == 1.0 && value < cmp) ? 1.0 : 0.0;
+              break;
+            }
+            case 0b110:    // 6: Toggle/Set
+            case 0b111: {  // 7: Reset/Set
+              if(timer->mode_0 == UP_MODE) timer->timer_0_duty = *timer->TA0CCR1 / (double)cmp;
+              else timer->timer_0_duty = abs(*timer->TA0CCR0 - *timer->TA0CCR1) / (double)cmp;
+              break;
+            }
+            default: break;
+        }
     }
     else if(timer->mode_0 == UP_DOWN_MODE) {
         cmp = *timer->TA0CCR0;
@@ -109,42 +141,44 @@ void handle_timer_a (Emulator *emu)
             value = *timer->TA0CCR0 - (value % *timer->TA0CCR0);
         }
         timer->timer_0_freq = (freq * 2.0) / cmp;
+        switch (OUTMOD1) {
+            case 0b000: {  // 0: Output
+              timer->timer_0_duty = 0;
+              break;
+            }
+            case 0b001: {  // 1: Set
+              timer->timer_0_duty = (timer->timer_0_duty == 0.0 && value < cmp) ? 0.0 : 1.0;
+              break;
+            }
+            case 0b101: {  // 5: Reset
+              timer->timer_0_duty = (timer->timer_0_duty == 1.0 && value < cmp) ? 1.0 : 0.0;
+              break;
+            }
+            case 0b010: {  // 2: Toggle/Reset
+              if(*timer->TA0CCR2 >= *timer->TA0CCR0) timer->timer_0_duty = 1.0;
+              else timer->timer_0_duty = 1.0 - 2 * (*timer->TA0CCR0 - *timer->TA0CCR2) / (double)cmp;
+              break;
+            }
+            case 0b011: {  // 3: Set/Reset
+              if(*timer->TA0CCR2 >= *timer->TA0CCR0) timer->timer_0_duty = 1.0;
+              else timer->timer_0_duty = 1.0 - (*timer->TA0CCR0 - *timer->TA0CCR2) / (double)cmp;
+              break;
+            }
+            // TODO: in toggle mode this can be this or 1.0 - duty depending on initial state
+            case 0b100:    // 4: Toggle
+            case 0b110: {  // 6: Toggle/Set
+              if(*timer->TA0CCR2 >= *timer->TA0CCR0) timer->timer_0_duty = 0.0;
+              else timer->timer_0_duty = 2 * (*timer->TA0CCR0 - *timer->TA0CCR2) / (double)cmp;
+              break;
+            }
+            case 0b111: {  // 7: Reset/Set
+              if(*timer->TA0CCR2 >= *timer->TA0CCR0) timer->timer_0_duty = 0.0;
+              else timer->timer_0_duty = (*timer->TA0CCR0 - *timer->TA0CCR2) / (double)cmp;
+              break;
+            }
+            default: break;
+        }
     }
-
-    switch (OUTMOD1) {
-    case 0b000: {  // 0: Output
-      timer->timer_0_duty = 0;
-      break;
-    }
-    case 0b001: {  // 1: Set
-      timer->timer_0_duty = (timer->timer_0_duty == 0.0 && value < cmp) ? 0.0 : 1.0;
-      break;
-    }
-    case 0b010:    // 2: Toggle/Reset
-    case 0b011: {  // 3: Set/Reset
-      if(timer->mode_0 == UP_MODE) timer->timer_0_duty = 1.0 - *timer->TA0CCR1 / (double)cmp;
-      else timer->timer_0_duty = 1.0 - abs(*timer->TA0CCR1 - *timer->TA0CCR0) / (double)cmp;
-      break;
-    }
-    case 0b100: {  // 4: Toggle
-      timer->timer_0_duty = 0.5;
-      break;
-    }
-    case 0b101: {  // 5: Reset
-      timer->timer_0_duty = (timer->timer_0_duty == 1.0 && value < cmp) ? 1.0 : 0.0;
-      break;
-    }
-    case 0b110:    // 6: Toggle/Set
-    case 0b111: {  // 7: Reset/Set
-      double x;
-      if(timer->mode_0 == UP_MODE) x = *timer->TA0CCR1 / (double)cmp;
-      else x = abs(*timer->TA0CCR1 - *timer->TA0CCR0) / (double)cmp;
-      timer->timer_0_duty = x;
-      break;
-    }
-    default: break;
-   }
-
     *timer->TA0R = (uint16_t)value;
   }
 
@@ -220,7 +254,7 @@ void handle_timer_a (Emulator *emu)
   }
   */
 
-  if (!timer->timer_0_running && MC0 != 0) {
+  if (!timer->timer_0_running && MC0 != 0 && (*timer->TA0CCR0 > 0 || timer->mode_0 == CONTINOUS_MODE) ) {
     //print_console(emu, "START TIMER\n");
 //    puts("TimerA0 started");
     timer->timer_0_running = true;
@@ -232,7 +266,7 @@ void handle_timer_a (Emulator *emu)
     //exit(1);
     //}
   }
-  if(timer->timer_0_running && MC0 == 0) {
+  if(timer->timer_0_running && (MC0 == 0 || !(*timer->TA0CCR0 > 0 || timer->mode_0 == CONTINOUS_MODE))) {
 //    puts("TimerA0 stopped");
     timer->timer_0_running = false;
     timer->timer_0_freq = 0;

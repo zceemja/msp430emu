@@ -34,36 +34,36 @@ void handle_bcm (Emulator *emu)
   uint8_t DIVMx = (BCSCTL2 >> 4) & 0x03;
 
   if (SELMx == 0b00 || SELMx == 0b01) { // source = DCOCLK
-    bcm->mclk_source = DCOCLK;
-    bcm->mclk_freq = (bcm->dco_freq*1.0) / bcm->mclk_div;
+    bcm->mclk_freq = (bcm->dco_freq*1.0) / (1 << DIVMx);
     bcm->mclk_period = (1.0/(bcm->mclk_freq))*1000000000.0;
+    bcm->cpu_period = bcm->mclk_period * CLK_PER_INSTR;
   }
   else if (SELMx == 0b10) { // XT2CLK
-    bcm->mclk_source = XT2CLK;
     bcm->mclk_freq = 0;
     bcm->mclk_period = 0;
   }
-  else if (SELMx == 0b11) { // VLOCLK
-    bcm->mclk_source = VLOCLK;
-    bcm->mclk_freq = 12000 / bcm->mclk_div;
+  else if (SELMx == 0b11) { // LFXT1CLK
+    bcm->mclk_freq = (bcm->lfxt1_freq*1.0) / (1 << DIVMx);
     bcm->mclk_period = (1.0/(bcm->mclk_freq))*1000000000.0;
-  }
-
-  switch (DIVMx) {
-  case 0b00: bcm->mclk_div = 1; break;
-  case 0b01: bcm->mclk_div = 2; break;
-  case 0b10: bcm->mclk_div = 4; break;
-  case 0b11: bcm->mclk_div = 8; break;
-  default: break;
+    bcm->cpu_period = bcm->mclk_period * CLK_PER_INSTR;
   }
 
   // HANDLE SMCLK -------------------
   uint8_t SELS  = (BCSCTL2 >> 3) & 0x01;
   uint8_t DIVSx = (BCSCTL2 >> 1) & 0x03;
+  if (SELS == 0) { // DCOCLK
+    bcm->smclk_freq = (bcm->dco_freq*1.0) / (1 << DIVSx);
+    bcm->smclk_period = (1.0/(bcm->smclk_freq))*1000000000.0;
+  }
+  else if (SELS == 1) { // XT2CLK or LFXT1CLK
+    bcm->smclk_freq = (bcm->lfxt1_freq*1.0) / (1 << DIVSx);
+    bcm->smclk_period = (1.0/(bcm->smclk_freq))*1000000000.0;
+  }
 
   // HANDLE ACLK -------------------
   uint8_t DIVAx = (BCSCTL1 >> 4) & 0x03;
-  
+  bcm->aclk_freq = bcm->lfxt1_freq / (1 << DIVAx);
+  bcm->aclk_period = (1.0/(bcm->aclk_freq))*1000000000.0;
 
   // HANDLE LOW POWER MODES --------
 
@@ -166,6 +166,8 @@ void setup_bcm (Emulator *emu)
   bcm->dco_freq = 1030000;
   bcm->dco_period = 971;
   bcm->dco_pulse_width = 970 / 2;
+
+  bcm->lfxt1_freq = 2000; // measured internal frequency
 }
 
 

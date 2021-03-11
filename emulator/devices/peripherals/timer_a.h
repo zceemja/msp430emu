@@ -89,6 +89,9 @@ struct Timer_a {
   uint8_t source_0;
   uint8_t idiv_0;
   uint8_t mode_0;
+  uint64_t timer_0_start;
+  double timer_0_freq;  // in Hz
+  double timer_0_duty; // duty cycle from 0 to 1
 
   bool timer_1_running;
   bool capture_mode_1;

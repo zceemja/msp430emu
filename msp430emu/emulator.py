@@ -183,8 +183,8 @@ class EmulatorWindow(wx.Frame):
             "Clear console": (view_menu, 0, wx.NewId(), "Clean text in console window", lambda e: self.control.Clear()),
 
             "Step\tCtrl+N": (debug_menu, 0, wx.NewId(), "Step single instruction", self.OnStep),
-            "Registers": (debug_menu, 0, wx.NewId(), "Print registers in console", lambda e: self.emu.send_command("regs")),
-            "Misc": (debug_menu, 0, wx.NewId(), "", lambda e: print(self.emu.get_misc_info())),
+            # "Registers": (debug_menu, 0, wx.NewId(), "Print registers in console", lambda e: self.emu.send_command("regs")),
+            # "Misc": (debug_menu, 0, wx.NewId(), "", lambda e: print(self.emu.get_misc_info())),
         }
 
         for name, (menu, typ, wx_id, desc, action) in self.menu_navigation.items():
@@ -239,13 +239,17 @@ class EmulatorWindow(wx.Frame):
         self.sizer0.Add(self.serial, 1, wx.EXPAND)
         self.sizer0.Add(self.sizer3, 0, wx.EXPAND)
 
-        panel = wx.Panel(self, size=wx.Size(275, 375))
+        self.diagram_panel = wx.Panel(self, size=wx.Size(275, 375))
         # img =
         # wx.StaticBitmap(panel, -1, img, (0, 0), (img.GetWidth(), img.GetHeight()))
-        self.diagram = DrawRect(panel, -1, size=wx.Size(275, 375))
+        self.diagram = DrawRect(self.diagram_panel, -1, size=wx.Size(275, 375))
 
         self.sizer_diagram = wx.BoxSizer(wx.VERTICAL)
-        self.sizer_diagram.Add(panel, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+        self.sizer_diagram.Add(self.diagram_panel, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
+
+        self.misc_label = wx.StaticText(self, label="")
+        self.misc_label.SetBackgroundColour(wx.Colour(0, 0, 0, alpha=0))
+        self.sizer_diagram.Add(self.misc_label, 0, wx.ALIGN_TOP)
 
         self.registers = RegisterPanel(self, self.emu)
 
@@ -267,6 +271,7 @@ class EmulatorWindow(wx.Frame):
         self.btn_send_serial.Disable()
 
         self.emu_paused = True
+        self.emu_misc_info = None
         self.timer_running = Event()
         self.timer = Thread(target=self.OnTimer)
         self.timer.start()
@@ -320,9 +325,40 @@ class EmulatorWindow(wx.Frame):
             self.load = fileDialog.GetPath()
             self.OnLoad(None)
 
+    def UpdateMisc(self):
+        info = self.emu.get_misc_info()
+        if info is not None:
+            text = f"Time: {info.get('period', 0) / 1e9 :.3f}s"
+            text += f"\nMCLK: {info.get('mclk', 0) / 1e6 :.3f}MHz"
+            text += f"\nACLK: {info.get('aclk', 0) / 1e3 :.2f}kHz"
+            text += f"\nSMCLK: {info.get('smclk', 0) / 1e6 :.3f}MHz"
+            if info.get('uart_baud', 0) > 0:
+                text += f"\nUART Baud: {info['uart_baud']}"
+            ta0_freq = info.get('timer_a0_freq', 0)
+            if ta0_freq > 0:
+                pins = info.get('timer_pwm_pins', [0])[0]
+                duty = info.get('timer_a0_duty', 0) * 100
+                if ta0_freq > 1:
+                    text += f"\nTA0 PWM: {ta0_freq:.1f}Hz"
+                else:
+                    text += f"\nTA0 PWM: {1.0/ta0_freq:.2f}s"
+                text += f" {duty:.2f}%"
+                if self.diagram.pwm_pins != pins or \
+                        self.diagram.ta0_freq != ta0_freq or \
+                        self.diagram.ta0_duty != duty:
+                    self.diagram.pwm_pins = pins
+                    self.diagram.ta0_freq = ta0_freq
+                    self.diagram.ta0_duty = duty
+                    wx.CallAfter(self.diagram.Refresh)
+            wx.CallAfter(self.misc_label.SetLabel, text)
+            if self.misc_label.GetLabel().count('\n') != text.count('\n'):
+                wx.CallAfter(self.sizer_diagram.Layout)
+            self.emu_misc_info = info
+
     def OnLoad(self, e):
         if self.load is None:
             return
+        self.misc_label.SetLabel("")
         self.emu.load_file(self.load)
         self.diagram.reset()
         self.btn_key.Disable()
@@ -348,6 +384,7 @@ class EmulatorWindow(wx.Frame):
                 pass
             if self.emu_paused:
                 continue
+            self.UpdateMisc()
             port1 = self.emu.get_port1_regs()
             if port1 is not None and self.diagram.port1 != port1[0]:
                 self.diagram.port1 = port1[0]
@@ -426,6 +463,7 @@ class EmulatorWindow(wx.Frame):
     def OnKeyReset(self, e):
         self.diagram.reset()
         self.emu.reset()
+        self.misc_label.SetLabel("")
 
     def SendSerial(self, e):
         text = self.serial_input.GetValue()
@@ -435,6 +473,7 @@ class EmulatorWindow(wx.Frame):
     def OnStep(self, e):
         self.emu.send_command("step")
         self.registers.update_values()
+        self.UpdateMisc()
 
     def ToggleRegisters(self, e):
         if e.Id == self.menu_navigation["Port1 Registers"][2]:
@@ -467,13 +506,13 @@ class RegisterPanel(wx.Panel):
         self.box = wx.BoxSizer(wx.HORIZONTAL)
         self.emu = emu
         self.regs_port1 = {name: None for name in emu.REG_NAMES_PORT1}
-        self.regs_bcm = {name: None for name in emu.REG_NAMES_BCM + ["MCLK"]}
+        self.regs_bcm = {name: None for name in emu.REG_NAMES_BCM}
         self.regs_timer_a = {name: None for name in emu.REG_NAMES_TIMER_A}
         self.regs_usci = {name: None for name in emu.REG_NAMES_USCI}
         self.regs_cpu = {name: None for name in emu.REG_NAMES_CPU}
 
         self.grid_port1 = wx.FlexGridSizer(len(self.regs_port1), 2, 0, 10)
-        self.grid_bmc = wx.FlexGridSizer(len(self.regs_bcm), 2, 0, 10)
+        self.grid_bmc = wx.FlexGridSizer(len(self.regs_bcm), 2, 0, 5)
         self.grid_timer_a = wx.FlexGridSizer(len(self.regs_timer_a), 2, 0, 10)
         self.grid_usci = wx.FlexGridSizer(len(self.regs_usci), 2, 0, 10)
         self.grid_cpu = wx.FlexGridSizer(len(self.regs_cpu), 2, 0, 5)
@@ -522,22 +561,8 @@ class RegisterPanel(wx.Panel):
         values = func()
         if values is None:
             return None
-        if panel == self.panel_bmc:
-            formatted = [f"{value:08b}" for value in values]
-            freq = "x"
-            if values[0] == 96 and values[1] == 135:
-                freq = "1.03"
-            elif values[0] == 0b11010001 and values[1] == 0b10000110:
-                freq = "1.00"
-            elif values[0] == 0b10010010 and values[1] == 0b10001101:
-                freq = "8.00"
-            elif values[0] == 0b10011110 and values[1] == 0b10001110:
-                freq = "12.0"
-            elif values[0] == 0b10010101 and values[1] == 0b10001111:
-                freq = "16.0"
-            formatted.append(freq + " MHz")
-        elif panel == self.panel_cpu:
-            formatted = ["0x%0.4X" % int.from_bytes(values[i:i+2], sys.byteorder) for i in range(0, len(values), 2)]
+        if panel == self.panel_cpu or panel == self.panel_timer_a:
+            formatted = ["0x%0.4X" % int.from_bytes(values[i:i + 2], sys.byteorder) for i in range(0, len(values), 2)]
         else:
             formatted = [f"{value:08b}" for value in values]
         return formatted
@@ -584,6 +609,7 @@ class DrawRect(wx.Panel):
     """ class MyPanel creates a panel to draw on, inherits wx.Panel """
     RED = wx.Colour(255, 0, 0, wx.ALPHA_OPAQUE)
     GREEN = wx.Colour(0, 255, 0, wx.ALPHA_OPAQUE)
+    WHITE = wx.Colour(255, 255, 255, wx.ALPHA_OPAQUE)
 
     def __init__(self, parent, id, **kwargs):
         # create a panel
@@ -592,33 +618,77 @@ class DrawRect(wx.Panel):
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.power = False
         self.port1 = 0
+        self.pwm_pins = 0
+        self.ta0_freq = 0
+        self.ta0_duty = 0
         self.image = wx.Bitmap(path.join(source_dir, "msp430.png"), wx.BITMAP_TYPE_PNG)
+
+    @staticmethod
+    def hsv_to_rgb(h, s, v):
+        i = int(h * 6.)
+        f = (h * 6.) - i
+        v *= 255
+        p, q, t = v * (1. - s), v * (1. - s * f), v * (1. - s * (1. - f))
+        i %= 6
+        if i == 0:
+            return v, t, p
+        if i == 1:
+            return q, v, p
+        if i == 2:
+            return p, v, t
+        if i == 3:
+            return p, q, v
+        if i == 4:
+            return t, p, v
+        if i == 5:
+            return v, p, q
 
     def reset(self):
         self.power = False
         self.port1 = 0
+        self.pwm_pins = 0
+        self.ta0_freq = 0
+        self.ta0_duty = 0
         wx.CallAfter(self.Refresh)
 
     def OnPaint(self, evt):
         """set up the device context (DC) for painting"""
         self.dc = wx.PaintDC(self)
         self.dc.DrawBitmap(self.image, 0, 0, True)
-        if self.power:
-            self.dc.SetPen(wx.Pen(self.GREEN, style=wx.TRANSPARENT))
-            self.dc.SetBrush(wx.Brush(self.GREEN, wx.SOLID))
-            # set x, y, w, h for rectangle
-            self.dc.DrawRectangle(39, 110, 8, 15)
 
+        # GREEN Power LED
+        colour = self.GREEN if self.power else self.WHITE
+        self.dc.SetPen(wx.Pen(colour, style=wx.TRANSPARENT))
+        self.dc.SetBrush(wx.Brush(colour, wx.SOLID))
+        # set x, y, w, h for rectangle
+        self.dc.DrawRectangle(39, 110, 8, 15)
+
+        # GREEN LED
         if self.port1 & 1 << 6:
-            self.dc.SetPen(wx.Pen(self.GREEN, style=wx.TRANSPARENT))
-            self.dc.SetBrush(wx.Brush(self.GREEN, wx.SOLID))
-            # set x, y, w, h for rectangle
-            self.dc.DrawRectangle(83, 356, 8, 15)
+            v = 1.0
+        elif self.pwm_pins & 1 << 6:
+            v = (self.ta0_duty+20) / 120
+        else:
+            v = 0.0
+        colour = wx.Colour(*self.hsv_to_rgb(1 / 3, v, 1), alpha=255)
+        self.dc.SetPen(wx.Pen(colour, style=wx.TRANSPARENT))
+        self.dc.SetBrush(wx.Brush(colour, wx.SOLID))
+        # set x, y, w, h for rectangle
+        self.dc.DrawRectangle(83, 356, 8, 15)
 
+        # RED LED
         if self.port1 & 1:
-            self.dc.SetPen(wx.Pen(self.RED, style=wx.TRANSPARENT))
-            self.dc.SetBrush(wx.Brush(self.RED, wx.SOLID))
-            self.dc.DrawRectangle(70, 356, 8, 15)
+            v = 1.0
+        elif self.pwm_pins & 1:
+            v = (self.ta0_duty+20) / 120
+        else:
+            v = 0.0
+        colour = wx.Colour(*self.hsv_to_rgb(0, v, 1), alpha=255)
+        self.dc.SetPen(wx.Pen(colour, style=wx.TRANSPARENT))
+        self.dc.SetBrush(wx.Brush(colour, wx.SOLID))
+        # set x, y, w, h for rectangle
+        self.dc.DrawRectangle(70, 356, 8, 15)
+
         del self.dc
 
 

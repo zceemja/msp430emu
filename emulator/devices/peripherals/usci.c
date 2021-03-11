@@ -124,10 +124,10 @@ void handle_usci (Emulator *emu) {
     uint64_t clock = 0;
     usci->UART_baud = 0;
     usci->USCI_RESET = false;
-    if((*usci->UCA0CTL1 & 0xc0) == 0x40) { // USCI clock source is ACLK
-        clock = 32768;
+    if((*usci->UCA0CTL1 & 0xc0) == 0x40) { // ACLK
+        clock = cpu->bcm->aclk_freq;
     } else if ((*usci->UCA0CTL1 & 0x80) == 0x80) { // SMCLK
-        clock = cpu->bcm->mclk_freq;
+        clock = cpu->bcm->smclk_freq;
     }
     if(clock > 0) {
         double baud = clock / *usci->UCA0BR0;

@@ -193,7 +193,7 @@ void cpu_step(Emulator *emu) {
     handle_port_1(emu);
     handle_usci(emu);
     handle_interrupts(emu);
-    cpu->nsecs += cpu->bcm->mclk_period;
+    cpu->nsecs += cpu->bcm->cpu_period;
 }
 void cpu_reset(Emulator *emu) {
     Cpu *cpu = emu->cpu;

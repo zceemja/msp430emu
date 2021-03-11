@@ -49,15 +49,22 @@ struct Bcm {
   uint8_t *IFG1;    // r/w, @0x2, PUC: 0x0
 
   // -----
+  uint64_t lfxt1_freq;  // In Hz
+
   uint64_t dco_freq; // In Hz
   uint64_t dco_period; // In nanosecs  
   uint64_t dco_pulse_width; // In nanosecs  
 
   // ----
-  uint8_t mclk_source;
-  uint64_t mclk_div;
+  uint64_t aclk_freq;
+  uint64_t aclk_period; // in nanosecs
+
+  uint64_t smclk_freq;
+  uint64_t smclk_period; // in nanosecs
+
   uint64_t mclk_freq;
-  uint64_t mclk_period; // in manosecs
+  uint64_t mclk_period; // in nanosecs
+  uint64_t cpu_period;  // average instruction period in nanosecs
 };
 
 //uint64_t nanosec_diff(struct timespec *timeA_p, struct timespec *timeB_p);

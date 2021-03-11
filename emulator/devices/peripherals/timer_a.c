@@ -33,6 +33,7 @@ void handle_timer_a (Emulator *emu)
   uint8_t TA0CLR   = (TA0CTL >> 2) & 0x01;
   uint8_t TA0IE    = (TA0CTL >> 1) & 0x01;
   uint8_t TA0IFG   = TA0CTL & 0x01;
+  uint64_t freq = 0;
 
   switch (TASSEL0) {
   case 0b00: {timer->source_0 = TACLK; break;}
@@ -49,6 +50,9 @@ void handle_timer_a (Emulator *emu)
   case 0b11: {timer->idiv_0 = 8; break;}
   default: break;
   }
+
+  if(timer->source_0 == ACLK) freq = cpu->bcm->aclk_freq / timer->idiv_0;
+  else if(timer->source_0 == SMCLK) freq = cpu->bcm->smclk_freq / timer->idiv_0;
 
   switch (MC0) {
   case 0b00: {timer->mode_0 = STOP_MODE; break;}
@@ -70,110 +74,169 @@ void handle_timer_a (Emulator *emu)
   // --------------------------------------------------------------
   // Handle Timer_A0 Capture/Compare Control Register
   
+  uint16_t TA0CCTL0 = *timer->TA0CCTL0;
   uint16_t TA0CCTL1 = *timer->TA0CCTL1;
- 
-  uint8_t OUTMOD1 = (TA0CCTL1 >> 5) & 0x07;  
-  uint8_t CAP     = (TA0CCTL1 >> 8) & 0x01;
 
-  switch (OUTMOD1) {
-  case 0b000: {break;}
-  case 0b001: {break;}
-  case 0b010: {break;}
-  case 0b011: {break;}
-  case 0b100: {break;}
-  case 0b101: {break;}
-  case 0b110: {break;}
-  case 0b111: {break;}
-  default: break;
-  }  
+  uint8_t OUTMOD1 = (TA0CCTL1 >> 5) & 0x07;
+  uint8_t CCIE    = (TA0CCTL0 >> 4) & 0x01;
+  uint8_t CAP     = (TA0CCTL0 >> 8) & 0x01;
 
   // CAP field (Capture or compare mode?)
   timer->capture_mode_0 = CAP;
   timer->compare_mode_0 = !CAP;
 
   // --------------------------------------------------------------
+  if(timer->timer_0_running) {
+    uint64_t period = 1000000000 / freq;
+    uint64_t value = (cpu->nsecs - timer->timer_0_start) / period;
+    uint16_t cmp;
+    if(timer->mode_0 == UP_MODE || timer->mode_0 == CONTINOUS_MODE) {
+        cmp = (timer->mode_0 == UP_MODE) ? *timer->TA0CCR0 : 0xFFFF;
+        if(value > cmp) {
+            value = value % cmp;
+            timer->timer_0_start = cpu->nsecs;
+            if(CCIE) service_interrupt(emu, TIMER0_A0_VECTOR);
+        }
+        timer->timer_0_freq = (freq * 1.0) / cmp;
+    }
+    else if(timer->mode_0 == UP_DOWN_MODE) {
+        cmp = *timer->TA0CCR0;
+        if(value > *timer->TA0CCR0 * 2) {
+            value = value % (*timer->TA0CCR0 * 2);
+            timer->timer_0_start = cpu->nsecs;
+        } else if(value > *timer->TA0CCR0) {
+            if(*timer->TA0R < value && CCIE) service_interrupt(emu, TIMER0_A0_VECTOR);
+            value = *timer->TA0CCR0 - (value % *timer->TA0CCR0);
+        }
+        timer->timer_0_freq = (freq * 2.0) / cmp;
+    }
 
+    switch (OUTMOD1) {
+    case 0b000: {  // 0: Output
+      timer->timer_0_duty = 0;
+      break;
+    }
+    case 0b001: {  // 1: Set
+      timer->timer_0_duty = (timer->timer_0_duty == 0.0 && value < cmp) ? 0.0 : 1.0;
+      break;
+    }
+    case 0b010:    // 2: Toggle/Reset
+    case 0b011: {  // 3: Set/Reset
+      if(timer->mode_0 == UP_MODE) timer->timer_0_duty = 1.0 - *timer->TA0CCR1 / (double)cmp;
+      else timer->timer_0_duty = 1.0 - abs(*timer->TA0CCR1 - *timer->TA0CCR0) / (double)cmp;
+      break;
+    }
+    case 0b100: {  // 4: Toggle
+      timer->timer_0_duty = 0.5;
+      break;
+    }
+    case 0b101: {  // 5: Reset
+      timer->timer_0_duty = (timer->timer_0_duty == 1.0 && value < cmp) ? 1.0 : 0.0;
+      break;
+    }
+    case 0b110:    // 6: Toggle/Set
+    case 0b111: {  // 7: Reset/Set
+      double x;
+      if(timer->mode_0 == UP_MODE) x = *timer->TA0CCR1 / (double)cmp;
+      else x = abs(*timer->TA0CCR1 - *timer->TA0CCR0) / (double)cmp;
+      timer->timer_0_duty = x;
+      break;
+    }
+    default: break;
+   }
 
+    *timer->TA0R = (uint16_t)value;
+  }
+
+/*
   static double last_period = 0;
   static double last_pulse_width = 0;
 
   // Figure Out Frequency in up mode
+
   if (timer->compare_mode_0) {
     if (timer->mode_0 == UP_MODE) {
-      uint16_t period_ct = *timer->TA0CCR0 + 1;       
+      uint16_t period_ct = *timer->TA0CCR0 + 1;
       uint64_t frequency = emu->cpu->bcm->mclk_freq;
 
       double period = (1.0/frequency) * period_ct;// In seconds
       double pulse_width = (1.0/frequency) * (*timer->TA0CCR1);
-      double duty_cycle  = pulse_width / period; 
-      
-      /*
-	printf("period: %lf\npulse_width: %lf\nduty: %lf%%\n", 
-	period, pulse_width, duty_cycle);
-      */
-      
-      if (last_period != period || last_pulse_width != pulse_width) {
-	if (period >= 0.015 && period <= 0.025) { // 0.020 is sweet spot 50 Hz
-	  //printf("period: %lf, last_period: %lf\n", period, last_period);
-	  //printf("pw: %lf, last_pw: %lf\n", pulse_width, last_pulse_width);
+      double duty_cycle  = pulse_width / period;
 
-	  if (pulse_width < 0.0009) {
-	    // Send Control for 0 degrees
-	    //print_console(emu, "0 degrres\n");
-	    
-	    uint8_t byte = 0;
-	    send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
-	  }
-	  else if (pulse_width < 0.0012) {
-	    // Send Control for 30 Degrees
-	    //print_console(emu, "30 degrres\n");
-	    
-	    uint8_t byte = 30;
-	    send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
-	  }
-	  else if (pulse_width < 0.0015) {
-	    // Send Control for 60 degrees
-	    uint8_t byte = 60;
-	    send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
-	  }
-	  else if (pulse_width < 0.0018) {
-	    // Send Control for 90 degrees
-	    //print_console(emu, "90 degrres\n");
-	    
-	    uint8_t byte = 90;
-	    send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
-	  }
-	  else if (pulse_width < 0.0021) {
-	    // Send Control for 120 degrees
-	    uint8_t byte = 120;
-	    send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
-	  }
-	  else if (pulse_width >= 0.0021) {
-	    // Send Control for 150 degrees
-	    uint8_t byte = 150;
-	    send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
-	  }
-	}
+
+//	printf("period: %lf\npulse_width: %lf\nduty: %lf%%\n",
+//	period, pulse_width, duty_cycle);
+
+      if (last_period != period || last_pulse_width != pulse_width) {
+        if (period >= 0.015 && period <= 0.025) { // 0.020 is sweet spot 50 Hz
+          //printf("period: %lf, last_period: %lf\n", period, last_period);
+          //printf("pw: %lf, last_pw: %lf\n", pulse_width, last_pulse_width);
+
+          if (pulse_width < 0.0009) {
+            // Send Control for 0 degrees
+            //print_console(emu, "0 degrres\n");
+
+            uint8_t byte = 0;
+            send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
+          }
+          else if (pulse_width < 0.0012) {
+            // Send Control for 30 Degrees
+            //print_console(emu, "30 degrres\n");
+
+            uint8_t byte = 30;
+            send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
+          }
+          else if (pulse_width < 0.0015) {
+            // Send Control for 60 degrees
+            uint8_t byte = 60;
+            send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
+          }
+          else if (pulse_width < 0.0018) {
+            // Send Control for 90 degrees
+            //print_console(emu, "90 degrres\n");
+
+            uint8_t byte = 90;
+            send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
+          }
+          else if (pulse_width < 0.0021) {
+            // Send Control for 120 degrees
+            uint8_t byte = 120;
+            send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
+          }
+          else if (pulse_width >= 0.0021) {
+            // Send Control for 150 degrees
+            uint8_t byte = 150;
+            send_control(emu, SERVO_MOTOR, (void *)&byte, 1);
+          }
+        }
       }
 
       if (OUTMOD1 == 0b111) { // RESET/SET
-	uint16_t pulse_width = *timer->TA0CCR1;	
+	    uint16_t pulse_width = *timer->TA0CCR1;
       }
-
       last_period = period;
       last_pulse_width = pulse_width;
     }
   }
+  */
 
   if (!timer->timer_0_running && MC0 != 0) {
     //print_console(emu, "START TIMER\n");
+//    puts("TimerA0 started");
     timer->timer_0_running = true;
+    timer->timer_0_start = cpu->nsecs;
 
     //pthread_t pp;
     //if(pthread_create(&pp, NULL, timer_A0_thread , (void*)emu)){
     //printf("ErrorcreatingDCOthread\n");
     //exit(1);
     //}
+  }
+  if(timer->timer_0_running && MC0 == 0) {
+//    puts("TimerA0 stopped");
+    timer->timer_0_running = false;
+    timer->timer_0_freq = 0;
+    timer->timer_0_duty = 0;
   }
 }
 
@@ -258,6 +321,9 @@ void setup_timer_a (Emulator *emu)
   // Configure other
   timer->source_0 = 0b10;
   timer->timer_0_running = false;
+  timer->timer_0_start = 0;
+  timer->timer_0_freq = 0.0;
+  timer->timer_0_duty = 0.0;
 
   timer->source_1 = 0b10;
   timer->timer_1_running = false;

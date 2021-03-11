@@ -28,8 +28,8 @@ List of features that are added:
 - [x] Reset button
 - [x] Button for P1.3
 - [x] Interrupts
-- [ ] Timer A
-- [ ] PWM Signals
+- [x] Timer A
+- [x] PWM Signals
 - [x] Unbiased circuit simulation (due to internal pull-up/down resistors)
 - [ ] Watchdog Timer
 - [ ] GPIO Oscilloscope

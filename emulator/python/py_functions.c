@@ -67,17 +67,13 @@ PyObject *get_misc_data() {
     PyObject *dict = PyDict_New();
     PyDict_SetItemString(dict, "period", PyLong_FromUnsignedLongLong(cpu->nsecs));
     PyDict_SetItemString(dict, "mclk", PyLong_FromUnsignedLongLong(bcm->mclk_freq));
-
-    PyObject *mck_src_str;
-    switch(bcm->mclk_source) {
-        case DCOCLK: {mck_src_str = PyUnicode_FromString("DCOCLK"); break;}
-        case XT2CLK: {mck_src_str = PyUnicode_FromString("XT2CLK"); break;}
-        case VLOCLK: {mck_src_str = PyUnicode_FromString("VLOCLK"); break;}
-        default: {mck_src_str = PyUnicode_FromString("?"); break;}
-//         TACLK, ACLK, SMCLK, MCLK, INCLK, NUM_CLOCKS
-    }
-    PyDict_SetItemString(dict, "mclk_src", mck_src_str);
+    PyDict_SetItemString(dict, "aclk", PyLong_FromUnsignedLongLong(bcm->aclk_freq));
+    PyDict_SetItemString(dict, "smclk", PyLong_FromUnsignedLongLong(bcm->smclk_freq));
     PyDict_SetItemString(dict, "uart_baud", PyLong_FromUnsignedLong(cpu->usci->UART_baud));
+    PyDict_SetItemString(dict, "timer_a0_freq", PyFloat_FromDouble(cpu->timer_a->timer_0_freq));
+    PyDict_SetItemString(dict, "timer_a0_duty", PyFloat_FromDouble(cpu->timer_a->timer_0_duty));
+    uint8_t pwm_pins = ~*cpu->p1->_OUT & *cpu->p1->_SEL & ~*cpu->p1->_SEL2;
+    PyDict_SetItemString(dict, "timer_pwm_pins", PyBytes_FromStringAndSize(&pwm_pins, 1));
 
     return dict;
 }
@@ -126,7 +122,7 @@ PyObject *get_bcm_regs() {
 
 PyObject *get_timer_regs() {
     if(emuInst == NULL) return Py_None;
-    char regs[18];
+    uint16_t regs[18];
     Timer_a *timer = emuInst->cpu->timer_a;
     regs[0] = *timer->TA0CTL;
     regs[1] = *timer->TA0R;
@@ -148,7 +144,7 @@ PyObject *get_timer_regs() {
     regs[16] = *timer->TA1CCR2;
     regs[17] = *timer->TA1IV;
 
-    return PyBytes_FromStringAndSize(regs, 18);
+    return PyBytes_FromStringAndSize((char*)regs, 18*2);
 }
 
 PyObject *get_usci_regs() {
@@ -301,7 +297,7 @@ void start_emu(char *file) {
                 if(cpu->bcm->mclk_period == 0) break;
 
                 // Average of 4 cycles per instruction
-                uint64_t cycles_time = (uint64_t)(cpu->bcm->mclk_period * 4.883 * 500);
+                uint64_t cycles_time = cpu->bcm->cpu_period * 500;
                 uint64_t delta = time_now - time_last;
                 if(time_last > time_now) delta = 0;
                 uint64_t sleep_time = cycles_time - delta;

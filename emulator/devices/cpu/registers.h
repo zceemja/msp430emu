@@ -26,6 +26,8 @@
 
 #include "../../emulator.h"
 
+#define CLK_PER_INSTR 4.883;  // Approximation
+
 enum {
   P1_0_ON_PACKET  = 0x00,
   P1_0_OFF_PACKET = 0x01,

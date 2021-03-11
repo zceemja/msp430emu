@@ -248,7 +248,6 @@ class EmulatorWindow(wx.Frame):
         self.sizer_diagram.Add(self.diagram_panel, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL)
 
         self.misc_label = wx.StaticText(self, label="")
-        self.misc_label.SetBackgroundColour(wx.Colour(0, 0, 0, alpha=0))
         self.sizer_diagram.Add(self.misc_label, 0, wx.ALIGN_TOP)
 
         self.registers = RegisterPanel(self, self.emu)

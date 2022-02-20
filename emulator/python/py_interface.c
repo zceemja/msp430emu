@@ -18,11 +18,10 @@ static PyObject *method_start(PyObject *self, PyObject *args) {
 
 static PyObject *method_cmd(PyObject *self, PyObject *args) {
     char *cmd;
-    int len;
-    if(!PyArg_ParseTuple(args, "s#", &cmd, &len)) {
+    if(!PyArg_ParseTuple(args, "s", &cmd)) {
         return NULL;
     }
-    cmd_emu(cmd, len);
+    cmd_emu(cmd, strlen(cmd));
     return Py_None;
 }
 
@@ -130,12 +129,11 @@ static PyObject *method_on_control(PyObject *self, PyObject *args) {
 
 static PyObject *method_write_serial(PyObject *self, PyObject *args) {
     char *cmd;
-    int len;
-    if(!PyArg_ParseTuple(args, "s#", &cmd, &len)) {
+    if(!PyArg_ParseTuple(args, "s", &cmd)) {
         return NULL;
     }
     Py_BEGIN_ALLOW_THREADS
-    write_serial(cmd, len);
+    write_serial(cmd, strlen(cmd));
     Py_END_ALLOW_THREADS
     return Py_None;
 }

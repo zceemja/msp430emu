@@ -626,8 +626,8 @@ class DrawRect(wx.Panel):
     def hsv_to_rgb(h, s, v):
         i = int(h * 6.)
         f = (h * 6.) - i
-        v *= 255
-        p, q, t = v * (1. - s), v * (1. - s * f), v * (1. - s * (1. - f))
+        v = int(v) * 255
+        p, q, t = int(v * (1. - s)), int(v * (1. - s * f)), int(v * (1. - s * (1. - f)))
         i %= 6
         if i == 0:
             return v, t, p
